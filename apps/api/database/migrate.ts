@@ -36,6 +36,7 @@ async function migrate() {
       const sql = readFileSync(path.join(migrationDir, file), "utf-8");
 
       await client.query("BEGIN");
+      console.log(`Appliying ${file}`);
 
       try {
         await client.query(sql);

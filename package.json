@@ -20,10 +20,6 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "concurrently": "^10.0.6",
-    "pg": "^8.23.1"
-  },
-  "devDependencies": {
-    "@types/pg": "^8.23.1"
+    "concurrently": "^10.0.6"
   }
 }

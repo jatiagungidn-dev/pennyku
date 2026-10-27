@@ -7,6 +7,8 @@ const envSchema = z.object({
     .default("development"),
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().trim().min(1),
+  NEON_AUTH_JWKS_URL: z.string().url(),
+  NEON_AUTH_ISSUER: z.string().url(),
 });
 
 const parsed = envSchema.safeParse(process.env);
