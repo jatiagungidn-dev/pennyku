@@ -3,8 +3,11 @@ import { pool } from "../../config/db.js";
 
 const router = Router();
 
-router.get("/", async (_req, res) => {
-  const result = await pool.query(`
+router.get("/", async (req, res) => {
+  const userId = req.auth!.userId;
+
+  const result = await pool.query(
+    `
         SELECT
             id,
             name,
@@ -14,13 +17,17 @@ router.get("/", async (_req, res) => {
             updated_at,
             user_id
         FROM wallets
-    `);
+        WHERE user_id = $1;
+    `,
+    [userId],
+  );
 
   res.status(200).json({ data: result.rows });
 });
 
 router.post("/", async (req, res) => {
-  const { name, type, initial_balance, user_id } = req.body;
+  const { name, type, initial_balance } = req.body;
+  const userId = req.auth!.userId;
 
   const result = await pool.query(
     `
@@ -28,7 +35,7 @@ router.post("/", async (req, res) => {
         VALUES ($1, $2, $3, $4)
         RETURNING id, name, type, initial_balance, created_at, updated_at, user_id
     `,
-    [name, type, initial_balance, user_id],
+    [name, type, initial_balance, userId],
   );
 
   res.status(201).json({ data: result.rows });
