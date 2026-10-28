@@ -4,46 +4,48 @@ import "./App.css";
 
 type AuthMode = "login" | "signup";
 
-export default function App() {
+function Brand() {
+  return (
+    <div className="brand">
+      <div className="brand-icon">P</div>
+      <span>PennyKu</span>
+    </div>
+  );
+}
+
+function AuthPage() {
   const [mode, setMode] = useState<AuthMode>("signup");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [success, setSuccess] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setMessage("");
+    setSuccess(false);
 
     try {
-      if (mode === "signup") {
-        const result = await authClient.signUp.email({
-          name,
-          email,
-          password,
-        });
+      const result =
+        mode === "signup"
+          ? await authClient.signUp.email({ name, email, password })
+          : await authClient.signIn.email({ email, password });
 
-        if (result.error) {
-          setMessage(result.error.message ?? "Gagal membuat akun. Coba lagi.");
-        } else {
-          setMessage("Akun berhasil dibuat. Selamat datang di PennyKu!");
-        }
+      if (result.error) {
+        setMessage(result.error.message ?? "Autentikasi gagal.");
       } else {
-        const result = await authClient.signIn.email({
-          email,
-          password,
-        });
-
-        if (result.error) {
-          setMessage(result.error.message ?? "Login gagal. Periksa akunmu.");
-        } else {
-          setMessage("Login berhasil!");
-        }
+        setSuccess(true);
+        setMessage(
+          mode === "signup"
+            ? "Akun berhasil dibuat. Memuat dashboard..."
+            : "Login berhasil. Memuat dashboard...",
+        );
       }
     } catch {
-      setMessage("Terjadi kesalahan. Periksa koneksi dan konfigurasi Auth.");
+      setMessage("Terjadi kesalahan. Coba periksa koneksi dan Auth URL.");
     } finally {
       setLoading(false);
     }
@@ -52,10 +54,7 @@ export default function App() {
   return (
     <main className="auth-page">
       <section className="auth-showcase">
-        <header className="brand">
-          <div className="brand-icon">P</div>
-          <span>PennyKu</span>
-        </header>
+        <Brand />
 
         <div className="showcase-content">
           <div className="eyebrow">
@@ -77,41 +76,18 @@ export default function App() {
           </p>
 
           <div className="preview-card">
-            <div className="preview-top">
-              <div>
-                <span className="preview-label">FINANCIAL OVERVIEW</span>
-                <h2>Lebih teratur, lebih tenang.</h2>
-              </div>
-              <div className="preview-symbol">↗</div>
-            </div>
-
-            <div className="preview-divider" />
-
-            <div className="preview-stats">
-              <div>
-                <span className="preview-label">WALLETS</span>
-                <strong>Cash · Bank · E-Wallet</strong>
-              </div>
-              <div className="preview-badge">Your way</div>
-            </div>
-
+            <span className="preview-label">A BETTER MONEY HABIT</span>
+            <h2>Mulai dari langkah kecil.</h2>
             <div className="preview-bars" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
+              {Array.from({ length: 12 }, (_, index) => (
+                <span
+                  key={index}
+                  style={{ height: `${25 + ((index * 29) % 70)}%` }}
+                />
+              ))}
             </div>
-
             <p className="preview-footnote">
-              Satu langkah kecil menuju keuangan yang lebih sehat.
+              Satu tempat untuk mengatur keuanganmu.
             </p>
           </div>
         </div>
@@ -123,9 +99,8 @@ export default function App() {
       </section>
 
       <section className="auth-panel">
-        <div className="mobile-brand brand">
-          <div className="brand-icon">P</div>
-          <span>PennyKu</span>
+        <div className="mobile-brand">
+          <Brand />
         </div>
 
         <div className="auth-card">
@@ -133,13 +108,11 @@ export default function App() {
             <span className="auth-kicker">
               {mode === "signup" ? "GET STARTED" : "WELCOME BACK"}
             </span>
-
             <h2>
               {mode === "signup"
                 ? "Mulai dari sini."
                 : "Senang melihatmu lagi."}
             </h2>
-
             <p>
               {mode === "signup"
                 ? "Buat akun dan mulai rapikan keuanganmu."
@@ -158,7 +131,6 @@ export default function App() {
             >
               Daftar
             </button>
-
             <button
               type="button"
               className={mode === "login" ? "active" : ""}
@@ -177,11 +149,10 @@ export default function App() {
                 <label htmlFor="name">Nama lengkap</label>
                 <input
                   id="name"
-                  type="text"
-                  placeholder="Nama kamu"
-                  autoComplete="name"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
+                  placeholder="Nama kamu"
+                  autoComplete="name"
                   required
                 />
               </div>
@@ -192,10 +163,10 @@ export default function App() {
               <input
                 id="email"
                 type="email"
-                placeholder="kamu@email.com"
-                autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
+                placeholder="kamu@email.com"
+                autoComplete="email"
                 required
               />
             </div>
@@ -205,29 +176,20 @@ export default function App() {
               <input
                 id="password"
                 type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
                 placeholder="Minimal 8 karakter"
                 autoComplete={
                   mode === "signup" ? "new-password" : "current-password"
                 }
                 minLength={8}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
                 required
               />
-              {mode === "signup" && (
-                <span className="field-hint">
-                  Gunakan password yang kuat dan unik.
-                </span>
-              )}
             </div>
 
             {message && (
               <div
-                className={`form-message ${
-                  message.includes("berhasil") || message.includes("Selamat")
-                    ? "success"
-                    : "error"
-                }`}
+                className={`form-message ${success ? "success" : "error"}`}
                 role="status"
               >
                 {message}
@@ -257,12 +219,209 @@ export default function App() {
             </button>
           </p>
 
-          <div className="security-note">
-            <span aria-hidden="true">◇</span>
-            <span>Autentikasi aman melalui Neon Auth</span>
-          </div>
+          <div className="security-note">◇ Autentikasi melalui Neon Auth</div>
         </div>
       </section>
     </main>
+  );
+}
+
+function DashboardPage({
+  user,
+  onLogout,
+}: {
+  user: { name?: string; email?: string };
+  onLogout: () => void;
+}) {
+  const [activeNav, setActiveNav] = useState("Overview");
+
+  const navItems = [
+    { label: "Overview", icon: "◫" },
+    { label: "Wallets", icon: "▣" },
+    { label: "Transactions", icon: "⇄" },
+  ];
+
+  return (
+    <main className="dashboard">
+      <aside className="sidebar">
+        <Brand />
+
+        <p className="sidebar-label">WORKSPACE</p>
+
+        <nav className="sidebar-nav" aria-label="Main navigation">
+          {navItems.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              className={
+                activeNav === item.label ? "nav-item active" : "nav-item"
+              }
+              onClick={() => setActiveNav(item.label)}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              {item.label}
+              {item.label === "Wallets" && <span className="nav-arrow">↗</span>}
+            </button>
+          ))}
+        </nav>
+
+        <div className="sidebar-bottom">
+          <div className="profile">
+            <div className="avatar">
+              {(user.name || user.email || "P").charAt(0).toUpperCase()}
+            </div>
+            <div className="profile-copy">
+              <strong>{user.name || "PennyKu User"}</strong>
+              <span>{user.email || "Signed in"}</span>
+            </div>
+          </div>
+
+          <button className="logout-button" onClick={onLogout}>
+            ↪ <span>Log out</span>
+          </button>
+        </div>
+      </aside>
+
+      <section className="dashboard-main">
+        <header className="dashboard-header">
+          <div>
+            <span className="auth-kicker">YOUR FINANCIAL SPACE</span>
+            <h1>{activeNav === "Overview" ? "Overview" : activeNav}</h1>
+            <p>Hai, {user.name || "teman"}! Yuk, rapikan keuanganmu.</p>
+          </div>
+          <div className="header-avatar">
+            {(user.name || user.email || "P").charAt(0).toUpperCase()}
+          </div>
+        </header>
+
+        <section className="welcome-banner">
+          <div>
+            <span className="banner-eyebrow">A FRESH START</span>
+            <h2>Keuangan yang lebih teratur dimulai di sini.</h2>
+            <p>
+              Buat wallet pertamamu untuk mulai mencatat uang yang kamu miliki.
+            </p>
+          </div>
+          <div className="banner-art" aria-hidden="true">
+            <div className="art-circle">₨</div>
+            <div className="art-spark">✳</div>
+          </div>
+        </section>
+
+        <section className="summary-grid" aria-label="Financial summary">
+          <article className="summary-card balance-card">
+            <div className="summary-top">
+              <span>Total balance</span>
+              <span className="summary-icon">◈</span>
+            </div>
+            <strong>Belum tersedia</strong>
+            <p>Buat wallet untuk mulai melacak saldo.</p>
+          </article>
+
+          <article className="summary-card">
+            <div className="summary-top">
+              <span>Total income</span>
+              <span className="summary-icon income-icon">↗</span>
+            </div>
+            <strong>Belum tersedia</strong>
+            <p>Catatan pemasukan akan tampil di sini.</p>
+          </article>
+
+          <article className="summary-card">
+            <div className="summary-top">
+              <span>Total expenses</span>
+              <span className="summary-icon expense-icon">↘</span>
+            </div>
+            <strong>Belum tersedia</strong>
+            <p>Catatan pengeluaran akan tampil di sini.</p>
+          </article>
+        </section>
+
+        <section className="content-grid">
+          <article className="content-card wallet-section">
+            <div className="section-heading">
+              <div>
+                <h2>My wallets</h2>
+                <p>Semua tempat penyimpanan uangmu.</p>
+              </div>
+              <button
+                className="text-button"
+                onClick={() => setActiveNav("Wallets")}
+              >
+                View wallets ↗
+              </button>
+            </div>
+
+            <div className="empty-state">
+              <div className="empty-icon">▣</div>
+              <h3>Wallet pertamamu dimulai di sini</h3>
+              <p>
+                Tambahkan Cash, Bank, atau E-Wallet untuk mulai mengatur saldo.
+              </p>
+              <button
+                className="primary-button"
+                onClick={() => setActiveNav("Wallets")}
+              >
+                Explore wallets <span>↗</span>
+              </button>
+              <span className="empty-hint">
+                Wallet creation akan kita hubungkan ke API berikutnya.
+              </span>
+            </div>
+          </article>
+
+          <article className="content-card activity-section">
+            <div className="section-heading">
+              <div>
+                <h2>Recent activity</h2>
+                <p>Aktivitas keuangan terbarumu.</p>
+              </div>
+            </div>
+
+            <div className="activity-empty">
+              <div className="activity-line">
+                <span>↗</span>
+              </div>
+              <p>Belum ada aktivitas.</p>
+              <span>Transaksi kamu akan muncul di sini.</span>
+            </div>
+          </article>
+        </section>
+
+        <footer className="dashboard-footer">
+          <span>PennyKu · Personal finance, made clearer.</span>
+          <span>Take control, one step at a time.</span>
+        </footer>
+      </section>
+    </main>
+  );
+}
+
+export default function App() {
+  const session = authClient.useSession();
+
+  if (session.isPending) {
+    return (
+      <main className="loading-screen">
+        <div className="loading-mark">P</div>
+        <p>Menyiapkan ruang finansialmu...</p>
+      </main>
+    );
+  }
+
+  if (!session.data?.user) {
+    return <AuthPage />;
+  }
+
+  return (
+    <DashboardPage
+      user={{
+        name: session.data.user.name,
+        email: session.data.user.email,
+      }}
+      onLogout={() => {
+        void authClient.signOut();
+      }}
+    />
   );
 }
