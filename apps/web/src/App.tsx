@@ -1,5 +1,11 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { authClient } from "./auth-client";
+import {
+  createWallet,
+  getWallets,
+  type Wallet,
+  type WalletType,
+} from "./lib/wallets";
 import "./App.css";
 
 type AuthMode = "login" | "signup";
@@ -234,6 +240,87 @@ function DashboardPage({
   onLogout: () => void;
 }) {
   const [activeNav, setActiveNav] = useState("Overview");
+  const [wallets, setWallets] = useState<Wallet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const [name, setName] = useState("");
+  const [type, setType] = useState<WalletType>("cash");
+  const [balance, setBalance] = useState("0");
+
+  async function loadWallets() {
+    setLoading(true);
+    setError("");
+
+    try {
+      const data = await getWallets();
+      setWallets(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memuat wallet.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadWallets();
+  }, []);
+
+  async function handleCreateWallet(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    setSuccess("");
+
+    const initialBalance = Number(balance);
+
+    if (!Number.isFinite(initialBalance) || initialBalance < 0) {
+      setError("Saldo awal harus berupa angka nol atau lebih.");
+      setSaving(false);
+      return;
+    }
+
+    try {
+      const wallet = await createWallet({
+        name: name.trim(),
+        type,
+        initial_balance: initialBalance,
+      });
+
+      setWallets((current) => [wallet, ...current]);
+      setName("");
+      setType("cash");
+      setBalance("0");
+      setShowForm(false);
+      setSuccess("Wallet berhasil dibuat!");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal membuat wallet.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const totalBalance = wallets.reduce(
+    (total, wallet) => total + Number(wallet.initial_balance),
+    0,
+  );
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 2,
+    }).format(amount);
+
+  const walletTypeLabel: Record<WalletType, string> = {
+    cash: "Cash",
+    bank: "Bank",
+    "e-wallet": "E-Wallet",
+    other: "Other",
+  };
 
   const navItems = [
     { label: "Overview", icon: "◫" },
@@ -244,7 +331,10 @@ function DashboardPage({
   return (
     <main className="dashboard">
       <aside className="sidebar">
-        <Brand />
+        <div className="brand">
+          <div className="brand-icon">P</div>
+          <span>PennyKu</span>
+        </div>
 
         <p className="sidebar-label">WORKSPACE</p>
 
@@ -260,7 +350,6 @@ function DashboardPage({
             >
               <span className="nav-icon">{item.icon}</span>
               {item.label}
-              {item.label === "Wallets" && <span className="nav-arrow">↗</span>}
             </button>
           ))}
         </nav>
@@ -286,7 +375,7 @@ function DashboardPage({
         <header className="dashboard-header">
           <div>
             <span className="auth-kicker">YOUR FINANCIAL SPACE</span>
-            <h1>{activeNav === "Overview" ? "Overview" : activeNav}</h1>
+            <h1>{activeNav}</h1>
             <p>Hai, {user.name || "teman"}! Yuk, rapikan keuanganmu.</p>
           </div>
           <div className="header-avatar">
@@ -294,99 +383,191 @@ function DashboardPage({
           </div>
         </header>
 
-        <section className="welcome-banner">
-          <div>
-            <span className="banner-eyebrow">A FRESH START</span>
-            <h2>Keuangan yang lebih teratur dimulai di sini.</h2>
-            <p>
-              Buat wallet pertamamu untuk mulai mencatat uang yang kamu miliki.
-            </p>
+        {error && (
+          <div className="form-message error" role="alert">
+            {error}
           </div>
-          <div className="banner-art" aria-hidden="true">
-            <div className="art-circle">₨</div>
-            <div className="art-spark">✳</div>
+        )}
+
+        {success && (
+          <div className="form-message success" role="status">
+            {success}
           </div>
-        </section>
+        )}
 
-        <section className="summary-grid" aria-label="Financial summary">
-          <article className="summary-card balance-card">
-            <div className="summary-top">
-              <span>Total balance</span>
-              <span className="summary-icon">◈</span>
-            </div>
-            <strong>Belum tersedia</strong>
-            <p>Buat wallet untuk mulai melacak saldo.</p>
-          </article>
+        {activeNav === "Overview" && (
+          <>
+            <section className="welcome-banner">
+              <div>
+                <span className="banner-eyebrow">A FRESH START</span>
+                <h2>Keuangan yang lebih teratur dimulai di sini.</h2>
+                <p>Buat wallet untuk mulai mencatat uang yang kamu miliki.</p>
+              </div>
+              <div className="banner-art" aria-hidden="true">
+                <div className="art-circle">₨</div>
+                <div className="art-spark">✳</div>
+              </div>
+            </section>
 
-          <article className="summary-card">
-            <div className="summary-top">
-              <span>Total income</span>
-              <span className="summary-icon income-icon">↗</span>
-            </div>
-            <strong>Belum tersedia</strong>
-            <p>Catatan pemasukan akan tampil di sini.</p>
-          </article>
+            <section className="summary-grid" aria-label="Financial summary">
+              <article className="summary-card balance-card">
+                <div className="summary-top">
+                  <span>Total initial balance</span>
+                  <span className="summary-icon">◈</span>
+                </div>
+                <strong>
+                  {loading ? "Memuat..." : formatCurrency(totalBalance)}
+                </strong>
+                <p>Gabungan saldo awal semua wallet.</p>
+              </article>
 
-          <article className="summary-card">
-            <div className="summary-top">
-              <span>Total expenses</span>
-              <span className="summary-icon expense-icon">↘</span>
-            </div>
-            <strong>Belum tersedia</strong>
-            <p>Catatan pengeluaran akan tampil di sini.</p>
-          </article>
-        </section>
+              <article className="summary-card">
+                <div className="summary-top">
+                  <span>Total wallets</span>
+                  <span className="summary-icon income-icon">▣</span>
+                </div>
+                <strong>{loading ? "..." : wallets.length}</strong>
+                <p>Wallet yang sudah kamu buat.</p>
+              </article>
 
-        <section className="content-grid">
-          <article className="content-card wallet-section">
+              <article className="summary-card">
+                <div className="summary-top">
+                  <span>Transactions</span>
+                  <span className="summary-icon expense-icon">⇄</span>
+                </div>
+                <strong>0</strong>
+                <p>Fitur transaksi belum tersedia.</p>
+              </article>
+            </section>
+          </>
+        )}
+
+        {activeNav === "Transactions" && (
+          <section className="content-card">
+            <h2>Transactions</h2>
+            <p>Fitur transaksi akan kita bangun pada milestone berikutnya.</p>
+          </section>
+        )}
+
+        {(activeNav === "Wallets" || activeNav === "Overview") && (
+          <section className="content-card wallet-section">
             <div className="section-heading">
               <div>
                 <h2>My wallets</h2>
                 <p>Semua tempat penyimpanan uangmu.</p>
               </div>
               <button
-                className="text-button"
-                onClick={() => setActiveNav("Wallets")}
-              >
-                View wallets ↗
-              </button>
-            </div>
-
-            <div className="empty-state">
-              <div className="empty-icon">▣</div>
-              <h3>Wallet pertamamu dimulai di sini</h3>
-              <p>
-                Tambahkan Cash, Bank, atau E-Wallet untuk mulai mengatur saldo.
-              </p>
-              <button
                 className="primary-button"
-                onClick={() => setActiveNav("Wallets")}
+                onClick={() => {
+                  setShowForm((current) => !current);
+                  setError("");
+                  setSuccess("");
+                }}
               >
-                Explore wallets <span>↗</span>
+                {showForm ? "Cancel" : "+ Add wallet"}
               </button>
-              <span className="empty-hint">
-                Wallet creation akan kita hubungkan ke API berikutnya.
-              </span>
-            </div>
-          </article>
-
-          <article className="content-card activity-section">
-            <div className="section-heading">
-              <div>
-                <h2>Recent activity</h2>
-                <p>Aktivitas keuangan terbarumu.</p>
-              </div>
             </div>
 
-            <div className="activity-empty">
-              <div className="activity-line">
-                <span>↗</span>
+            {showForm && (
+              <form className="wallet-form" onSubmit={handleCreateWallet}>
+                <div className="form-field">
+                  <label htmlFor="wallet-name">Wallet name</label>
+                  <input
+                    id="wallet-name"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Contoh: Dompet utama"
+                    maxLength={100}
+                    required
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label htmlFor="wallet-type">Wallet type</label>
+                  <select
+                    id="wallet-type"
+                    value={type}
+                    onChange={(event) =>
+                      setType(event.target.value as WalletType)
+                    }
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="bank">Bank</option>
+                    <option value="e-wallet">E-Wallet</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div className="form-field">
+                  <label htmlFor="wallet-balance">Initial balance (IDR)</label>
+                  <input
+                    id="wallet-balance"
+                    type="number"
+                    min="0"
+                    max="99999999999999.99"
+                    step="0.01"
+                    value={balance}
+                    onChange={(event) => setBalance(event.target.value)}
+                    required
+                  />
+                </div>
+
+                <button
+                  className="submit-button"
+                  type="submit"
+                  disabled={saving}
+                >
+                  {saving ? "Saving..." : "Create wallet"}
+                </button>
+              </form>
+            )}
+
+            {loading ? (
+              <p role="status">Memuat wallet...</p>
+            ) : wallets.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">▣</div>
+                <h3>Wallet pertamamu dimulai di sini</h3>
+                <p>
+                  Tambahkan Cash, Bank, atau E-Wallet untuk mulai mengatur
+                  saldo.
+                </p>
+                {!showForm && (
+                  <button
+                    className="primary-button"
+                    onClick={() => setShowForm(true)}
+                  >
+                    Create your first wallet ↗
+                  </button>
+                )}
               </div>
-              <p>Belum ada aktivitas.</p>
-              <span>Transaksi kamu akan muncul di sini.</span>
-            </div>
-          </article>
-        </section>
+            ) : (
+              <div className="wallet-list">
+                {wallets.map((wallet) => (
+                  <article className="wallet-item" key={wallet.id}>
+                    <div className="wallet-item-icon">▣</div>
+                    <div className="wallet-item-details">
+                      <strong>{wallet.name}</strong>
+                      <span>{walletTypeLabel[wallet.type]}</span>
+                    </div>
+                    <strong className="wallet-item-balance">
+                      {formatCurrency(Number(wallet.initial_balance))}
+                    </strong>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            {!loading && error && (
+              <button
+                className="text-button"
+                onClick={() => void loadWallets()}
+              >
+                Try loading again
+              </button>
+            )}
+          </section>
+        )}
 
         <footer className="dashboard-footer">
           <span>PennyKu · Personal finance, made clearer.</span>
