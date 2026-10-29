@@ -6,6 +6,7 @@ import {
   type Wallet,
   type WalletType,
 } from "./lib/wallets";
+import TransactionSection from "./components/TransactionSection";
 import "./App.css";
 
 type AuthMode = "login" | "signup";
@@ -442,12 +443,7 @@ function DashboardPage({
           </>
         )}
 
-        {activeNav === "Transactions" && (
-          <section className="content-card">
-            <h2>Transactions</h2>
-            <p>Fitur transaksi akan kita bangun pada milestone berikutnya.</p>
-          </section>
-        )}
+        {activeNav === "Transactions" && <TransactionSection />}
 
         {(activeNav === "Wallets" || activeNav === "Overview") && (
           <section className="content-card wallet-section">

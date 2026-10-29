@@ -1312,3 +1312,40 @@ input:focus-visible {
     text-align: left;
   }
 }
+
+.transaction-section {
+  display: grid;
+  gap: 24px;
+}
+
+.transaction-type-options {
+  display: flex;
+  gap: 10px;
+}
+
+.type-option {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #ded9e8;
+  border-radius: 10px;
+  background: white;
+  color: #201b2c;
+  font: inherit;
+  cursor: pointer;
+}
+
+.type-option.selected {
+  border-color: #7438d6;
+  background: #f0eaff;
+  color: #6128c4;
+  font-weight: 600;
+}
+
+.transaction-history {
+  display: grid;
+  gap: 14px;
+}
+
+.transaction-history h3 {
+  margin: 0;
+}

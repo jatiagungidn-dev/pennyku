@@ -15,7 +15,7 @@ router.get("/", async (req, res) => {
             t.category_id,
             t.type,
             t.amount,
-            t.description
+            t.description,
             t.transaction_date,
             t.created_at,
             t.updated_at,
