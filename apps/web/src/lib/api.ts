@@ -6,7 +6,8 @@ export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const token = await (authClient as any).getJWTToken?.();
+  const sessionResult = await authClient.getSession();
+  const token = sessionResult?.data?.session?.token;
 
   if (!token) {
     throw new Error("Sesi login tidak ditemukan. Silahkan login kembali.");

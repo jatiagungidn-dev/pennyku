@@ -16,7 +16,7 @@ router.get("/", async (req, res) => {
             type,
             initial_balance,
             created_at,
-            updated_at,
+            updated_at
         FROM wallets
         WHERE user_id = $1
         ORDER BY created_at DESC;
