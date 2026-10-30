@@ -95,9 +95,10 @@ router.post("/", async (req, res) => {
           error: "Category not found or incompatible with transaction type",
         });
       }
+    }
 
-      const result = await client.query(
-        `
+    const result = await client.query(
+      `
         INSERT INTO transactions (wallet_id, category_id, type, amount, description, transaction_date)
         VALUES ($1, $2, $3, $4, $5, COALESCE($6::date, CURRENT_DATE))
         RETURNING 
@@ -111,21 +112,21 @@ router.post("/", async (req, res) => {
             created_at,
             updated_at
         `,
-        [
-          wallet_id,
-          category_id ?? null,
-          type,
-          amount,
-          description?.trim() || null,
-          transaction_date ?? null,
-        ],
-      );
+      [
+        wallet_id,
+        category_id ?? null,
+        type,
+        amount,
+        description?.trim() || null,
+        transaction_date ?? null,
+      ],
+    );
 
-      await client.query("COMMIT");
+    await client.query("COMMIT");
 
-      res.status(201).json({ data: result.rows[0] });
-    }
+    res.status(201).json({ data: result.rows[0] });
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("Failed to create transactions:", err);
 
     res.status(500).json({ error: "Failed to create transactions" });

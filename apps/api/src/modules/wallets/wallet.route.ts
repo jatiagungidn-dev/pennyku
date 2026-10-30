@@ -10,16 +10,28 @@ router.get("/", async (req, res) => {
   try {
     const result = await pool.query(
       `
-        SELECT
-            id,
-            name,
-            type,
-            initial_balance,
-            created_at,
-            updated_at
-        FROM wallets
-        WHERE user_id = $1
-        ORDER BY created_at DESC;
+        SELECT 
+          w.id,
+          w.name,
+          w.type,
+          w.initial_balance,
+          w.initial_balance + COALESCE(
+            SUM(
+              CASE
+                WHEN t.type = 'income' THEN t.amount
+                WHEN t.type = 'expense' THEN -t.amount
+                ELSE 0
+              END
+            ),
+            0
+          ) AS current_balance,
+          w.created_at,
+          w.updated_at
+        FROM wallets w
+        LEFT JOIN transactions t ON t.wallet_id = w.id
+        WHERE w.user_id = $1
+        GROUP BY w.id
+        ORDER BY w.created_at DESC;
     `,
       [userId],
     );
@@ -60,6 +72,37 @@ router.post("/", async (req, res) => {
     console.error("Failed to create wallets:", err);
 
     res.status(500).json({ error: "Failed to create wallets" });
+  }
+});
+
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: "Invalid wallet ID" });
+    }
+
+    const userId = req.auth!.userId;
+
+    const result = await pool.query(
+      `
+      DELETE FROM wallets
+      WHERE id = $1 AND user_id = $2
+      RETURNING id;
+    `,
+      [id, userId],
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Wallet not found" });
+    }
+
+    res.status(200).json({ data: result.rows[0].id });
+  } catch (err) {
+    console.error("Failed to delete wallet:", err);
+
+    res.status(500).json({ error: "Failed to delete wallet" });
   }
 });
 

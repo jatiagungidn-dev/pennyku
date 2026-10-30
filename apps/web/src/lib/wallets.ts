@@ -7,6 +7,7 @@ export interface Wallet {
   name: string;
   type: WalletType;
   initial_balance: string | number;
+  current_balance: string | number;
   created_at: string;
   updated_at: string;
 }
@@ -38,4 +39,13 @@ export async function createWallet(input: CreateWalletInput): Promise<Wallet> {
   });
 
   return response.data;
+}
+
+export async function deleteWallet(id: string): Promise<void> {
+  await apiRequest<{
+    message: string;
+    data: { id: string };
+  }>(`/api/wallets/${id}`, {
+    method: "DELETE",
+  });
 }

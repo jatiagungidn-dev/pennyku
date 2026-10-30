@@ -1,5 +1,4 @@
 import { apiRequest } from "./api";
-import type { Wallet, WalletType } from "./wallets";
 
 export type TransactionType = "income" | "expense";
 
@@ -14,7 +13,7 @@ export interface Category {
 export interface Transaction {
   id: string;
   wallet_id: string;
-  category_id: string;
+  category_id: string | null;
   type: TransactionType;
   amount: string | number;
   description: string | null;

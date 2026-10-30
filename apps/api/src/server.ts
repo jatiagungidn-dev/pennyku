@@ -8,8 +8,8 @@ async function startServer() {
   try {
     await pool.query("SELECT 1");
     console.log("PostgreSQL Neon is connected");
-    app.listen(port, () => {
-      console.log(`PennyKu is listening on http://localhost:${port}`);
+    app.listen(port, "0.0.0.0", () => {
+      console.log(`PennyKu is listening on http://0.0.0.0:${port}`);
     });
   } catch (err) {
     console.error("Failed to start server", err);

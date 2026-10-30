@@ -3,6 +3,7 @@ import { authClient } from "./auth-client";
 import {
   createWallet,
   getWallets,
+  deleteWallet,
   type Wallet,
   type WalletType,
 } from "./lib/wallets";
@@ -242,6 +243,7 @@ function DashboardPage({
 }) {
   const [activeNav, setActiveNav] = useState("Overview");
   const [wallets, setWallets] = useState<Wallet[]>([]);
+  const [deletingWalletId, setDeletingWalletId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -304,8 +306,32 @@ function DashboardPage({
     }
   }
 
+  async function handleDeleteWallet(wallet: Wallet) {
+    const confirmed = window.confirm(
+      `Yakin ingin menghapus wallet "${wallet.name}"? Semua transaksi yang terkait juga akan terhapus.`,
+    );
+
+    if (!confirmed) return;
+
+    setDeletingWalletId(wallet.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      await deleteWallet(wallet.id);
+
+      setWallets((current) => current.filter((item) => item.id !== wallet.id));
+
+      setSuccess(`Wallet "${wallet.name}" berhasil dihapus.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal menghapus wallet.");
+    } finally {
+      setDeletingWalletId(null);
+    }
+  }
+
   const totalBalance = wallets.reduce(
-    (total, wallet) => total + Number(wallet.initial_balance),
+    (total, wallet) => total + Number(wallet.current_balance),
     0,
   );
 
@@ -413,7 +439,7 @@ function DashboardPage({
             <section className="summary-grid" aria-label="Financial summary">
               <article className="summary-card balance-card">
                 <div className="summary-top">
-                  <span>Total initial balance</span>
+                  <span>Total balance</span>
                   <span className="summary-icon">◈</span>
                 </div>
                 <strong>
@@ -547,7 +573,17 @@ function DashboardPage({
                       <span>{walletTypeLabel[wallet.type]}</span>
                     </div>
                     <strong className="wallet-item-balance">
-                      {formatCurrency(Number(wallet.initial_balance))}
+                      {formatCurrency(Number(wallet.current_balance))}
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => void handleDeleteWallet(wallet)}
+                        disabled={deletingWalletId === wallet.id}
+                      >
+                        {deletingWalletId === wallet.id
+                          ? "Deleting..."
+                          : "Delete"}
+                      </button>
                     </strong>
                   </article>
                 ))}
