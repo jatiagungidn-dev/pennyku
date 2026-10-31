@@ -9,4 +9,11 @@ export const createTransactionSchema = z.object({
   transaction_date: z.iso.date().optional(),
 });
 
+export const updateTransactionSchema = createTransactionSchema
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided",
+  });
+
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
+export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
