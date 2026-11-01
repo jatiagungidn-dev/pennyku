@@ -143,7 +143,7 @@ router.patch("/:id", async (req, res) => {
   const { id } = req.params;
   const idResult = z.uuid().safeParse(id);
 
-  if (!idResult) {
+  if (!idResult.success) {
     return res.status(400).json({ error: "Invalid transaction ID" });
   }
 
@@ -234,7 +234,7 @@ router.patch("/:id", async (req, res) => {
         WHERE id = $1 AND user_id = $2
         FOR UPDATE
       `,
-      [id, userId],
+      [wallet_id, userId],
     );
 
     if (walletResult.rowCount === 0) {
@@ -249,7 +249,7 @@ router.patch("/:id", async (req, res) => {
           FROM categories
           WHERE id = $1 AND type = $2 AND (user_id IS NULL OR user_id = $3)
         `,
-        [category_id, id, userId],
+        [category_id, type, userId],
       );
 
       if (categoryResult.rowCount === 0) {
@@ -262,7 +262,7 @@ router.patch("/:id", async (req, res) => {
 
     const result = await client.query(
       `
-        UPDATE transaction
+        UPDATE transactions
         SET 
           wallet_id = $1,
           category_id = $2,
