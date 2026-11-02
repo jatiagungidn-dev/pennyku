@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { authClient } from "./auth-client";
-import { getTransactions, type Transaction } from "./lib/transactions";
-import { getWallets, type Wallet } from "./lib/wallets";
+import { authClient } from "./lib/auth-client";
+import {
+  getTransactions,
+  type Transaction,
+} from "./services/transaction.service";
+import { getWallets, type Wallet } from "./services/wallet.service";
 import AuthPage from "./components/AuthPage";
 import DashboardSidebar from "./components/DashboardSidebar";
 import DashboardHeader from "./components/DashboardHeader";
@@ -105,17 +108,27 @@ export default function App() {
           />
         )}
 
-        {activeNav === "Transactions" && (
-          <TransactionSection
-            wallets={wallets}
-            transactions={transactions}
-            onTransactionCreated={(created) => {
-              setTransactions((current) => [created, ...current]);
-            }}
-            onError={setError}
-            onSuccess={setSuccess}
-          />
-        )}
+        <TransactionSection
+          wallets={wallets}
+          transactions={transactions}
+          onTransactionSaved={(saved) => {
+            setTransactions((current) => {
+              const exists = current.some(
+                (transaction) => transaction.id === saved.id,
+              );
+
+              if (exists) {
+                return current.map((transaction) =>
+                  transaction.id === saved.id ? saved : transaction,
+                );
+              }
+
+              return [saved, ...current];
+            });
+          }}
+          onError={setError}
+          onSuccess={setSuccess}
+        />
 
         <footer className="dashboard-footer">
           <span>PennyKu · Personal finance, made clearer.</span>

@@ -1,12 +1,14 @@
 import { formatIDR } from "../lib/format";
-import type { Transaction } from "../lib/transactions";
+import type { Transaction } from "../services/transaction.service";
 
 type TransactionListProps = {
   transactions: Transaction[];
+  onEdit: (transaction: Transaction) => void;
 };
 
 export default function TransactionList({
   transactions,
+  onEdit,
 }: TransactionListProps) {
   return (
     <div className="transaction-history">
@@ -40,6 +42,10 @@ export default function TransactionList({
                 {transaction.type === "income" ? "+" : "-"}
                 {formatIDR(Number(transaction.amount))}
               </strong>
+
+              <button type="button" onClick={() => onEdit(transaction)}>
+                Edit
+              </button>
             </article>
           ))}
         </div>

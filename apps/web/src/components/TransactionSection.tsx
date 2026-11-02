@@ -1,12 +1,13 @@
-import type { Transaction } from "../lib/transactions";
-import type { Wallet } from "../lib/wallets";
+import { useState } from "react";
+import type { Transaction } from "../services/transaction.service";
+import type { Wallet } from "../services/wallet.service";
 import TransactionForm from "./TransactionForm";
 import TransactionList from "./TransactionList";
 
 type TransactionSectionProps = {
   wallets: Wallet[];
   transactions: Transaction[];
-  onTransactionCreated: (transaction: Transaction) => void;
+  onTransactionSaved: (transaction: Transaction) => void;
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
 };
@@ -14,10 +15,13 @@ type TransactionSectionProps = {
 export default function TransactionSection({
   wallets,
   transactions,
-  onTransactionCreated,
+  onTransactionSaved,
   onError,
   onSuccess,
 }: TransactionSectionProps) {
+  const [editingTransaction, setEditingTransaction] =
+    useState<Transaction | null>(null);
+
   return (
     <section className="transaction-section">
       <div className="section-heading">
@@ -28,13 +32,22 @@ export default function TransactionSection({
       </div>
 
       <TransactionForm
+        key={editingTransaction?.id ?? "new-transaction"}
         wallets={wallets}
-        onTransactionCreated={onTransactionCreated}
+        initialTransaction={editingTransaction}
+        onTransactionSaved={(saved) => {
+          onTransactionSaved(saved);
+          setEditingTransaction(null);
+        }}
         onError={onError}
         onSuccess={onSuccess}
+        onCancel={() => setEditingTransaction(null)}
       />
 
-      <TransactionList transactions={transactions} />
+      <TransactionList
+        transactions={transactions}
+        onEdit={setEditingTransaction}
+      />
     </section>
   );
 }

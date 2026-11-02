@@ -1,4 +1,4 @@
-import { apiRequest } from "./api";
+import { api } from "../lib/api";
 
 export type WalletType = "cash" | "bank" | "e-wallet" | "other";
 
@@ -27,25 +27,17 @@ interface WalletResponse {
 }
 
 export async function getWallets(): Promise<Wallet[]> {
-  const response = await apiRequest<WalletListResponse>("/api/wallets");
+  const response = await api.get<WalletListResponse>("/api/wallets");
 
-  return response.data;
+  return response.data.data;
 }
 
 export async function createWallet(input: CreateWalletInput): Promise<Wallet> {
-  const response = await apiRequest<WalletResponse>("/api/wallets", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  const response = await api.post<WalletResponse>("/api/wallets", input);
 
-  return response.data;
+  return response.data.data;
 }
 
 export async function deleteWallet(id: string): Promise<void> {
-  await apiRequest<{
-    message: string;
-    data: { id: string };
-  }>(`/api/wallets/${id}`, {
-    method: "DELETE",
-  });
+  await api.delete(`/api/wallets/${id}`);
 }

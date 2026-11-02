@@ -1,6 +1,6 @@
 import { formatIDR } from "../lib/format";
-import type { Transaction } from "../lib/transactions";
-import type { Wallet } from "../lib/wallets";
+import type { Transaction } from "../services/transaction.service";
+import type { Wallet } from "../services/wallet.service";
 
 type OverviewSectionProps = {
   wallets: Wallet[];

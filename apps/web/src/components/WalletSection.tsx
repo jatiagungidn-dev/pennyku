@@ -5,7 +5,7 @@ import {
   getWallets,
   type Wallet,
   type WalletType,
-} from "../lib/wallets";
+} from "../services/wallet.service";
 import { formatIDR } from "../lib/format";
 
 type WalletSectionProps = {
@@ -53,7 +53,6 @@ export default function WalletSection({
 
   useEffect(() => {
     void loadWallets();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleCreateWallet(event: FormEvent<HTMLFormElement>) {

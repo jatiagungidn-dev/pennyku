@@ -1,40 +1,42 @@
-import { authClient } from "../auth-client";
+import axios from "axios";
+import { authClient } from "./auth-client";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+const baseURL = import.meta.env.VITE_API_URL;
 
-export async function apiRequest<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+if (!baseURL) {
+  throw new Error("Missing VITE_API_URL");
+}
+
+export const api = axios.create({
+  baseURL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+api.interceptors.request.use(async (config) => {
   const sessionResult = await authClient.getSession();
   const token = sessionResult?.data?.session?.token;
 
-  if (!token) {
-    throw new Error("Sesi login tidak ditemukan. Silahkan login kembali.");
+  if (token) {
+    config.headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  return config;
+});
 
-  const result: unknown = await response.json();
+export function getApiErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const message = error.response?.data?.error;
 
-  if (!response.ok) {
-    const message =
-      typeof result === "object" &&
-      result !== null &&
-      "error" in result &&
-      typeof result.error === "string"
-        ? result.error
-        : "Permintaan ke server gagal";
+    if (typeof message === "string") {
+      return message;
+    }
 
-    throw new Error(message);
+    return error.message || "Something went wrong";
   }
 
-  return result as T;
+  return error instanceof Error
+    ? error.message
+    : "An unexpected error occurred";
 }

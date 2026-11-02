@@ -1,34 +1,60 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+
 import {
   createTransaction,
-  getCategories,
-  type Category,
+  updateTransaction,
   type Transaction,
   type TransactionType,
-} from "../lib/transactions";
-import type { Wallet } from "../lib/wallets";
+} from "../services/transaction.service";
+
+import { getCategories, type Category } from "../services/category.service";
+import type { Wallet } from "../services/wallet.service";
 import { today } from "../lib/format";
 
 type TransactionFormProps = {
   wallets: Wallet[];
-  onTransactionCreated: (transaction: Transaction) => void;
+  initialTransaction?: Transaction | null;
+  onTransactionSaved: (transaction: Transaction) => void;
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
+  onCancel?: () => void;
 };
 
 export default function TransactionForm({
   wallets,
-  onTransactionCreated,
+  initialTransaction = null,
+  onTransactionSaved,
   onError,
   onSuccess,
+  onCancel,
 }: TransactionFormProps) {
+  const isEditing = Boolean(initialTransaction);
+
   const [categories, setCategories] = useState<Category[]>([]);
-  const [type, setType] = useState<TransactionType>("expense");
-  const [walletId, setWalletId] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [transactionDate, setTransactionDate] = useState(today());
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
+
+  const [type, setType] = useState<TransactionType>(
+    initialTransaction?.type ?? "expense",
+  );
+
+  const [walletId, setWalletId] = useState(initialTransaction?.wallet_id ?? "");
+
+  const [categoryId, setCategoryId] = useState(
+    initialTransaction?.category_id ?? "",
+  );
+
+  const [amount, setAmount] = useState(
+    initialTransaction ? String(initialTransaction.amount) : "",
+  );
+
+  const [description, setDescription] = useState(
+    initialTransaction?.description ?? "",
+  );
+
+  const [transactionDate, setTransactionDate] = useState(
+    initialTransaction?.transaction_date.slice(0, 10) ?? today(),
+  );
+
   const [saving, setSaving] = useState(false);
 
   const filteredCategories = useMemo(
@@ -43,18 +69,23 @@ export default function TransactionForm({
         setCategories(data);
       } catch (err) {
         onError(err instanceof Error ? err.message : "Gagal memuat kategori.");
+      } finally {
+        setCategoriesLoaded(true);
       }
     }
 
     void loadCategories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!filteredCategories.some((category) => category.id === categoryId)) {
+    if (
+      categoriesLoaded &&
+      categoryId &&
+      !filteredCategories.some((category) => category.id === categoryId)
+    ) {
       setCategoryId("");
     }
-  }, [filteredCategories, categoryId]);
+  }, [categoriesLoaded, filteredCategories, categoryId]);
 
   useEffect(() => {
     if (!walletId && wallets.length > 0) {
@@ -64,6 +95,7 @@ export default function TransactionForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
     onError("");
     onSuccess("");
 
@@ -82,34 +114,50 @@ export default function TransactionForm({
     setSaving(true);
 
     try {
-      const created = await createTransaction({
+      const input = {
         wallet_id: walletId,
         category_id: categoryId || null,
         type,
         amount: numericAmount,
-        description: description.trim() || undefined,
+        description: description.trim(),
         transaction_date: transactionDate,
-      });
+      };
 
-      const wallet = wallets.find((item) => item.id === created.wallet_id);
-      const category = categories.find(
-        (item) => item.id === created.category_id,
+      const saved = initialTransaction
+        ? await updateTransaction(initialTransaction.id, input)
+        : await createTransaction(input);
+
+      const wallet = wallets.find((item) => item.id === saved.wallet_id);
+
+      const category = categories.find((item) => item.id === saved.category_id);
+
+      const transactionWithNames: Transaction = {
+        ...saved,
+        wallet_name: saved.wallet_name ?? wallet?.name,
+        category_name: saved.category_name ?? category?.name ?? null,
+      };
+
+      onTransactionSaved(transactionWithNames);
+
+      onSuccess(
+        isEditing
+          ? "Transaksi berhasil diperbarui!"
+          : "Transaksi berhasil disimpan!",
       );
 
-      onTransactionCreated({
-        ...created,
-        wallet_name: created.wallet_name ?? wallet?.name,
-        category_name: created.category_name ?? category?.name ?? null,
-      });
-
-      setAmount("");
-      setDescription("");
-      setCategoryId("");
-      setTransactionDate(today());
-      onSuccess("Transaksi berhasil disimpan!");
+      if (!isEditing) {
+        setAmount("");
+        setDescription("");
+        setCategoryId("");
+        setTransactionDate(today());
+      }
     } catch (err) {
       onError(
-        err instanceof Error ? err.message : "Gagal menyimpan transaksi.",
+        err instanceof Error
+          ? err.message
+          : isEditing
+            ? "Gagal memperbarui transaksi."
+            : "Gagal menyimpan transaksi.",
       );
     } finally {
       setSaving(false);
@@ -157,6 +205,7 @@ export default function TransactionForm({
 
       <div className="form-field">
         <label htmlFor="transaction-wallet">Wallet</label>
+
         <select
           id="transaction-wallet"
           value={walletId}
@@ -173,10 +222,12 @@ export default function TransactionForm({
 
       <div className="form-field">
         <label htmlFor="transaction-category">Category</label>
+
         <select
           id="transaction-category"
           value={categoryId}
           onChange={(event) => setCategoryId(event.target.value)}
+          disabled={!categoriesLoaded}
         >
           <option value="">Uncategorized</option>
 
@@ -190,6 +241,7 @@ export default function TransactionForm({
 
       <div className="form-field">
         <label htmlFor="transaction-amount">Amount (IDR)</label>
+
         <input
           id="transaction-amount"
           type="number"
@@ -204,6 +256,7 @@ export default function TransactionForm({
 
       <div className="form-field">
         <label htmlFor="transaction-description">Description</label>
+
         <input
           id="transaction-description"
           value={description}
@@ -215,6 +268,7 @@ export default function TransactionForm({
 
       <div className="form-field">
         <label htmlFor="transaction-date">Transaction date</label>
+
         <input
           id="transaction-date"
           type="date"
@@ -225,8 +279,18 @@ export default function TransactionForm({
       </div>
 
       <button className="submit-button" type="submit" disabled={saving}>
-        {saving ? "Saving..." : "Save transaction"}
+        {saving
+          ? "Saving..."
+          : isEditing
+            ? "Update transaction"
+            : "Save transaction"}
       </button>
+
+      {isEditing && onCancel && (
+        <button type="button" onClick={onCancel} disabled={saving}>
+          Cancel
+        </button>
+      )}
     </form>
   );
 }

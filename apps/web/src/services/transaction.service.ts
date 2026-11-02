@@ -1,14 +1,6 @@
-import { apiRequest } from "./api";
+import { api } from "../lib/api";
 
 export type TransactionType = "income" | "expense";
-
-export interface Category {
-  id: string;
-  name: string;
-  type: TransactionType;
-  icon: string | null;
-  color: string | null;
-}
 
 export interface Transaction {
   id: string;
@@ -33,6 +25,15 @@ export interface CreateTransactionInput {
   transaction_date?: string;
 }
 
+export interface UpdateTransactionInput {
+  wallet_id?: string;
+  category_id?: string | null;
+  type?: TransactionType;
+  amount?: number;
+  description?: string;
+  transaction_date?: string;
+}
+
 interface ListResponse<T> {
   data: T[];
 }
@@ -43,24 +44,30 @@ interface ItemResponse<T> {
 
 export async function getTransactions(): Promise<Transaction[]> {
   const response =
-    await apiRequest<ListResponse<Transaction>>("/api/transactions");
+    await api.get<ListResponse<Transaction>>("/api/transactions");
 
-  return response.data;
-}
-
-export async function getCategories(): Promise<Category[]> {
-  const response = await apiRequest<ListResponse<Category>>("/api/categories");
-
-  return response.data;
+  return response.data.data;
 }
 
 export async function createTransaction(
   input: CreateTransactionInput,
 ): Promise<Transaction> {
-  const response = await apiRequest<ItemResponse<Transaction>>(
+  const response = await api.post<ItemResponse<Transaction>>(
     "/api/transactions",
-    { method: "POST", body: JSON.stringify(input) },
+    input,
   );
 
-  return response.data;
+  return response.data.data;
+}
+
+export async function updateTransaction(
+  id: string,
+  input: UpdateTransactionInput,
+): Promise<Transaction> {
+  const response = await api.patch<ItemResponse<Transaction>>(
+    `/api/transaction/${id}`,
+    input,
+  );
+
+  return response.data.data;
 }

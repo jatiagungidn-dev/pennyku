@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { authClient } from "../auth-client";
+import { authClient } from "../lib/auth-client";
 import Brand from "./Brand";
 
 type AuthMode = "login" | "signup";
