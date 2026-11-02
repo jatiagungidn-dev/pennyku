@@ -50,7 +50,9 @@ export default function OverviewSection({
 
           <strong>{loading ? "Memuat..." : formatIDR(totalBalance)}</strong>
           <p>
-            Income {formatIDR(totalIncome)} · Expense {formatIDR(totalExpense)}
+            Income {loading ? "Memuat..." : formatIDR(totalIncome)}
+            {" · "}
+            Expense {loading ? "Memuat..." : formatIDR(totalExpense)}
           </p>
         </article>
 
@@ -60,7 +62,7 @@ export default function OverviewSection({
             <span className="summary-icon income-icon">▣</span>
           </div>
 
-          <strong>{loading ? "..." : wallets.length}</strong>
+          <strong>{loading ? "..." : transactions.length}</strong>
           <p>Wallet yang sudah kamu buat.</p>
         </article>
 

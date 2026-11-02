@@ -75,7 +75,7 @@ export default function TransactionForm({
     }
 
     void loadCategories();
-  }, []);
+  }, [onError]);
 
   useEffect(() => {
     if (
@@ -174,123 +174,143 @@ export default function TransactionForm({
   }
 
   return (
-    <form className="wallet-form" onSubmit={handleSubmit}>
-      <div className="form-field">
-        <label>Transaction type</label>
-
-        <div className="transaction-type-options">
-          <button
-            type="button"
-            className={
-              type === "expense" ? "type-option selected" : "type-option"
-            }
-            onClick={() => setType("expense")}
-            aria-pressed={type === "expense"}
-          >
-            Expense
-          </button>
-
-          <button
-            type="button"
-            className={
-              type === "income" ? "type-option selected" : "type-option"
-            }
-            onClick={() => setType("income")}
-            aria-pressed={type === "income"}
-          >
-            Income
-          </button>
+    <form className="transaction-form" onSubmit={handleSubmit}>
+      <div className="transaction-form-header">
+        <div>
+          <h3>{isEditing ? "Edit transaction" : "New transaction"}</h3>
+          <p>
+            {isEditing
+              ? "Perbarui informasi transaksimu."
+              : "Catat uang masuk atau keluar dari wallet-mu."}
+          </p>
         </div>
       </div>
 
-      <div className="form-field">
-        <label htmlFor="transaction-wallet">Wallet</label>
+      <div className="transaction-form-grid">
+        <div className="form-field">
+          <label>Transaction type</label>
 
-        <select
-          id="transaction-wallet"
-          value={walletId}
-          onChange={(event) => setWalletId(event.target.value)}
-          required
-        >
-          {wallets.map((wallet) => (
-            <option key={wallet.id} value={wallet.id}>
-              {wallet.name}
-            </option>
-          ))}
-        </select>
+          <div className="transaction-type-options">
+            <button
+              type="button"
+              className={
+                type === "expense" ? "type-option selected" : "type-option"
+              }
+              onClick={() => setType("expense")}
+              aria-pressed={type === "expense"}
+            >
+              Expense
+            </button>
+
+            <button
+              type="button"
+              className={
+                type === "income" ? "type-option selected" : "type-option"
+              }
+              onClick={() => setType("income")}
+              aria-pressed={type === "income"}
+            >
+              Income
+            </button>
+          </div>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="transaction-wallet">Wallet</label>
+
+          <select
+            id="transaction-wallet"
+            value={walletId}
+            onChange={(event) => setWalletId(event.target.value)}
+            required
+          >
+            {wallets.map((wallet) => (
+              <option key={wallet.id} value={wallet.id}>
+                {wallet.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="transaction-category">Category</label>
+
+          <select
+            id="transaction-category"
+            value={categoryId}
+            onChange={(event) => setCategoryId(event.target.value)}
+            disabled={!categoriesLoaded}
+          >
+            <option value="">Uncategorized</option>
+
+            {filteredCategories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="transaction-amount">Amount (IDR)</label>
+
+          <input
+            id="transaction-amount"
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={amount}
+            onChange={(event) => setAmount(event.target.value)}
+            placeholder="50000"
+            required
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="transaction-description">Description</label>
+
+          <input
+            id="transaction-description"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            maxLength={255}
+            placeholder="Contoh: Makan siang"
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="transaction-date">Transaction date</label>
+
+          <input
+            id="transaction-date"
+            type="date"
+            value={transactionDate}
+            onChange={(event) => setTransactionDate(event.target.value)}
+            required
+          />
+        </div>
       </div>
 
-      <div className="form-field">
-        <label htmlFor="transaction-category">Category</label>
+      <div className="transaction-form-actions">
+        {isEditing && onCancel && (
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+          >
+            Cancel
+          </button>
+        )}
 
-        <select
-          id="transaction-category"
-          value={categoryId}
-          onChange={(event) => setCategoryId(event.target.value)}
-          disabled={!categoriesLoaded}
-        >
-          <option value="">Uncategorized</option>
-
-          {filteredCategories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="transaction-amount">Amount (IDR)</label>
-
-        <input
-          id="transaction-amount"
-          type="number"
-          min="0.01"
-          step="0.01"
-          value={amount}
-          onChange={(event) => setAmount(event.target.value)}
-          placeholder="50000"
-          required
-        />
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="transaction-description">Description</label>
-
-        <input
-          id="transaction-description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          maxLength={255}
-          placeholder="Contoh: Makan siang"
-        />
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="transaction-date">Transaction date</label>
-
-        <input
-          id="transaction-date"
-          type="date"
-          value={transactionDate}
-          onChange={(event) => setTransactionDate(event.target.value)}
-          required
-        />
-      </div>
-
-      <button className="submit-button" type="submit" disabled={saving}>
-        {saving
-          ? "Saving..."
-          : isEditing
-            ? "Update transaction"
-            : "Save transaction"}
-      </button>
-
-      {isEditing && onCancel && (
-        <button type="button" onClick={onCancel} disabled={saving}>
-          Cancel
+        <button className="submit-button" type="submit" disabled={saving}>
+          {saving
+            ? "Saving..."
+            : isEditing
+              ? "Update transaction"
+              : "Save transaction"}
         </button>
-      )}
+      </div>
     </form>
   );
 }

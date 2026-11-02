@@ -20,6 +20,7 @@ export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [isDashboardDataLoading, setIsDashboardDataLoading] = useState(true);
 
   const isAuthenticated = Boolean(session.data?.user);
 
@@ -27,6 +28,7 @@ export default function App() {
     if (!isAuthenticated) return;
 
     async function loadDashboardData() {
+      setIsDashboardDataLoading(true);
       setError("");
 
       try {
@@ -41,6 +43,8 @@ export default function App() {
         setError(
           err instanceof Error ? err.message : "Gagal memuat data dashboard.",
         );
+      } finally {
+        setIsDashboardDataLoading(false);
       }
     }
 
@@ -95,7 +99,7 @@ export default function App() {
           <OverviewSection
             wallets={wallets}
             transactions={transactions}
-            loading={session.isPending}
+            loading={isDashboardDataLoading}
           />
         )}
 
@@ -108,27 +112,29 @@ export default function App() {
           />
         )}
 
-        <TransactionSection
-          wallets={wallets}
-          transactions={transactions}
-          onTransactionSaved={(saved) => {
-            setTransactions((current) => {
-              const exists = current.some(
-                (transaction) => transaction.id === saved.id,
-              );
-
-              if (exists) {
-                return current.map((transaction) =>
-                  transaction.id === saved.id ? saved : transaction,
+        {activeNav === "Transactions" && (
+          <TransactionSection
+            wallets={wallets}
+            transactions={transactions}
+            onTransactionSaved={(saved) => {
+              setTransactions((current) => {
+                const exists = current.some(
+                  (transaction) => transaction.id === saved.id,
                 );
-              }
 
-              return [saved, ...current];
-            });
-          }}
-          onError={setError}
-          onSuccess={setSuccess}
-        />
+                if (exists) {
+                  return current.map((transaction) =>
+                    transaction.id === saved.id ? saved : transaction,
+                  );
+                }
+
+                return [saved, ...current];
+              });
+            }}
+            onError={setError}
+            onSuccess={setSuccess}
+          />
+        )}
 
         <footer className="dashboard-footer">
           <span>PennyKu · Personal finance, made clearer.</span>

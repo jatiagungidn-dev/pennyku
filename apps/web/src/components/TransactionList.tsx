@@ -43,9 +43,15 @@ export default function TransactionList({
                 {formatIDR(Number(transaction.amount))}
               </strong>
 
-              <button type="button" onClick={() => onEdit(transaction)}>
-                Edit
-              </button>
+              <div className="wallet-item-actions">
+                <button
+                  className="edit-button"
+                  type="button"
+                  onClick={() => onEdit(transaction)}
+                >
+                  Edit
+                </button>
+              </div>
             </article>
           ))}
         </div>
