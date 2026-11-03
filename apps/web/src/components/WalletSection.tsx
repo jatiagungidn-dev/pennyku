@@ -1,8 +1,7 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import {
   createWallet,
   deleteWallet,
-  getWallets,
   type Wallet,
   type WalletType,
 } from "../services/wallet.service";
@@ -10,6 +9,7 @@ import { formatIDR } from "../lib/format";
 
 type WalletSectionProps = {
   wallets: Wallet[];
+  onRefreshWallets: () => Promise<void>;
   onWalletsChange: (wallets: Wallet[]) => void;
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
@@ -24,12 +24,13 @@ const walletTypeLabel: Record<WalletType, string> = {
 
 export default function WalletSection({
   wallets,
+  onRefreshWallets,
   onWalletsChange,
   onError,
   onSuccess,
 }: WalletSectionProps) {
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [deletingWalletId, setDeletingWalletId] = useState<string | null>(null);
   const [walletToDelete, setWalletToDelete] = useState<Wallet | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -38,26 +39,22 @@ export default function WalletSection({
   const [type, setType] = useState<WalletType>("cash");
   const [balance, setBalance] = useState("0");
 
-  async function loadWallets() {
-    setLoading(true);
-
+  async function handleRefresh() {
+    setIsRefreshing(true);
     try {
-      const data = await getWallets();
-      onWalletsChange(data);
+      await onRefreshWallets();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Gagal memuat wallet.");
+      onError("Gagal menyinkronkan data wallet.");
     } finally {
-      setLoading(false);
+      setIsRefreshing(false);
     }
   }
-
-  useEffect(() => {
-    void loadWallets();
-  }, []);
 
   async function handleCreateWallet(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
+    onError("");
+    onSuccess("");
 
     const initialBalance = Number(balance);
 
@@ -177,9 +174,7 @@ export default function WalletSection({
         </form>
       )}
 
-      {loading ? (
-        <p role="status">Memuat wallet...</p>
-      ) : wallets.length === 0 ? (
+      {wallets.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">▣</div>
           <h3>Wallet pertamamu dimulai di sini</h3>
@@ -224,11 +219,13 @@ export default function WalletSection({
         </div>
       )}
 
-      {!loading && (
-        <button className="text-button" onClick={() => void loadWallets()}>
-          Refresh wallets
-        </button>
-      )}
+      <button
+        className="text-button"
+        onClick={() => void handleRefresh()}
+        disabled={isRefreshing}
+      >
+        {isRefreshing ? "Refreshing..." : "Refresh wallets"}
+      </button>
 
       {walletToDelete && (
         <div

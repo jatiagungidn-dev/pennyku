@@ -11,11 +11,35 @@ import { logger } from "./config/logger.js";
 const app = express();
 
 app.use(
+  pinoHttp({
+    logger,
+    genReqId: (req) => req.headers["x-request-id"] || crypto.randomUUID(),
+    serializers: {
+      req(req) {
+        return {
+          method: req.method,
+          url: req.url,
+        };
+      },
+      res(res) {
+        return {
+          statusCode: res.statusCode,
+        };
+      },
+    },
+    customSuccessMessage: (req, res, responseTime) => {
+      return `${req.method} ${req.url} -> HTTP ${res.statusCode} (${responseTime}ms)`;
+    },
+    customErrorMessage: (req, res, error) => {
+      return `${req.method} ${req.url} -> HTTP ${res.statusCode} ERROR: ${error.message}`;
+    },
+  }),
+);
+app.use(
   cors({
     origin: "*",
   }),
 );
-app.use(pinoHttp({ logger }));
 app.use(express.json());
 
 app.use("/api/wallets", requireAuth, walletsRouter);

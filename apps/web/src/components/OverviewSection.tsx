@@ -62,7 +62,7 @@ export default function OverviewSection({
             <span className="summary-icon income-icon">▣</span>
           </div>
 
-          <strong>{loading ? "..." : transactions.length}</strong>
+          <strong>{loading ? "..." : wallets.length}</strong>
           <p>Wallet yang sudah kamu buat.</p>
         </article>
 

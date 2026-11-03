@@ -24,32 +24,37 @@ export default function App() {
 
   const isAuthenticated = Boolean(session.data?.user);
 
+  async function loadDashboardData() {
+    setIsDashboardDataLoading(true);
+    setError("");
+
+    try {
+      const [walletData, transactionData] = await Promise.all([
+        getWallets(),
+        getTransactions(),
+      ]);
+
+      setWallets(walletData);
+      setTransactions(transactionData);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Gagal memuat data dashboard.",
+      );
+    } finally {
+      setIsDashboardDataLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!isAuthenticated) return;
-
-    async function loadDashboardData() {
-      setIsDashboardDataLoading(true);
-      setError("");
-
-      try {
-        const [walletData, transactionData] = await Promise.all([
-          getWallets(),
-          getTransactions(),
-        ]);
-
-        setWallets(walletData);
-        setTransactions(transactionData);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Gagal memuat data dashboard.",
-        );
-      } finally {
-        setIsDashboardDataLoading(false);
-      }
-    }
-
     void loadDashboardData();
   }, [isAuthenticated]);
+
+  function handleNavChange(newNav: string) {
+    setActiveNav(newNav);
+    setError("");
+    setSuccess("");
+  }
 
   if (session.isPending) {
     return (
@@ -74,7 +79,7 @@ export default function App() {
       <DashboardSidebar
         user={user}
         activeNav={activeNav}
-        onNavChange={setActiveNav}
+        onNavChange={handleNavChange}
         onLogout={() => {
           void authClient.signOut();
         }}
@@ -106,6 +111,7 @@ export default function App() {
         {activeNav === "Wallets" && (
           <WalletSection
             wallets={wallets}
+            onRefreshWallets={loadDashboardData}
             onWalletsChange={setWallets}
             onError={setError}
             onSuccess={setSuccess}
@@ -116,7 +122,7 @@ export default function App() {
           <TransactionSection
             wallets={wallets}
             transactions={transactions}
-            onTransactionSaved={(saved) => {
+            onTransactionSaved={async (saved) => {
               setTransactions((current) => {
                 const exists = current.some(
                   (transaction) => transaction.id === saved.id,
@@ -130,6 +136,8 @@ export default function App() {
 
                 return [saved, ...current];
               });
+
+              await loadDashboardData();
             }}
             onError={setError}
             onSuccess={setSuccess}

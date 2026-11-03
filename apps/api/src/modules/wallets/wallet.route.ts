@@ -1,13 +1,16 @@
 import { Router } from "express";
 import { pool } from "../../config/db.js";
 import { createWalletSchema } from "./wallet.schema.js";
-import { logger } from "../../config/logger.js";
 
 const router = Router();
 
 router.get("/", async (req, res) => {
   const userId = req.auth!.userId;
-  logger.info(`userId: ${userId}`);
+
+  req.log.debug(
+    { userId },
+    "Fetching wallets with calculated current balance...",
+  );
 
   try {
     const result = await pool.query(
@@ -38,11 +41,11 @@ router.get("/", async (req, res) => {
       [userId],
     );
 
+    req.log.info({ count: result.rowCount }, "Successfully fetched wallets");
+
     res.status(200).json({ data: result.rows });
-    logger.info("Wallet fetched successfully");
-    logger.info(`Data: ${result.rows}`);
   } catch (err) {
-    console.error("Failed to fetch wallets:", err);
+    req.log.error(err, "Failed to fetch wallets:");
 
     res.status(500).json({ error: "Failed to fetch wallets" });
   }
