@@ -10,4 +10,10 @@ export const createWalletSchema = z.object({
     .max(99_999_999_999_999.99),
 });
 
+export const updateWalletSchema = z.object({
+  name: z.string().trim().min(1).max(100).optional(),
+  type: z.enum(["cash", "bank", "e-wallet", "other"]).optional(),
+});
+
 export type CreateWalletInput = z.infer<typeof createWalletSchema>;
+export type UpdateWalletInput = z.infer<typeof updateWalletSchema>;
