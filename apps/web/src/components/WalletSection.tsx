@@ -65,13 +65,13 @@ export default function WalletSection({
     }
 
     try {
-      const wallet = await createWallet({
+      await createWallet({
         name: name.trim(),
         type,
         initial_balance: initialBalance,
       });
 
-      onWalletsChange([wallet, ...wallets]);
+      await onRefreshWallets();
 
       setName("");
       setType("cash");

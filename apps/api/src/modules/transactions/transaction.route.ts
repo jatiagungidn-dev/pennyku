@@ -9,8 +9,10 @@ import {
 const router = Router();
 
 router.get("/", async (req, res) => {
+  const userId = req.auth!.userId;
+  req.log.debug({ userId }, "Fetching transactions...");
+
   try {
-    const userId = req.auth!.userId;
     const result = await pool.query(
       `
         SELECT 
@@ -34,24 +36,45 @@ router.get("/", async (req, res) => {
       [userId],
     );
 
+    if (result.rowCount === 0) {
+      req.log.warn(
+        { userId },
+        "Fetching transactions failed: Transaction is empty",
+      );
+
+      return res.status(404).json({ error: "Transaction is empty" });
+    }
+
+    req.log.info(
+      { userId, count: result.rowCount },
+      "Fetching transactions successfully",
+    );
     res.status(200).json({ data: result.rows });
   } catch (err) {
-    console.error("Failed to fetch transactions:", err);
+    req.log.error({ userId, err }, "Failed to fetch transactions");
 
     res.status(500).json({ error: "Failed to fetch transactions" });
   }
 });
 
 router.post("/", async (req, res) => {
+  const userId = req.auth!.userId;
+
+  req.log.debug({ userId }, "Creating transaction...");
+
   const parsed = createTransactionSchema.safeParse(req.body);
 
   if (!parsed.success) {
+    req.log.warn(
+      { userId, error: parsed.error.flatten().fieldErrors },
+      "Creating transaction failed: Missing transaction data",
+    );
+
     return res
       .status(400)
       .json({ error: "Invalid transaction data", detail: parsed.error.issues });
   }
 
-  const userId = req.auth!.userId;
   const {
     wallet_id,
     category_id,
@@ -77,6 +100,8 @@ router.post("/", async (req, res) => {
     );
 
     if (walletResult.rowCount === 0) {
+      req.log.warn({ userId }, "Creating transaction failed: Wallet not found");
+
       await client.query("ROLLBACK");
       return res.status(404).json({ error: "Wallet not found" });
     }
@@ -94,6 +119,11 @@ router.post("/", async (req, res) => {
       );
 
       if (categoryResult.rowCount === 0) {
+        req.log.warn(
+          { userId },
+          "Creating transaction failed: Category not found or incompatible with transaction type",
+        );
+
         await client.query("ROLLBACK");
         return res.status(400).json({
           error: "Category not found or incompatible with transaction type",
@@ -128,10 +158,12 @@ router.post("/", async (req, res) => {
 
     await client.query("COMMIT");
 
+    req.log.info({ userId }, "Creating transaction successfully");
+
     res.status(201).json({ data: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("Failed to create transactions:", err);
+    req.log.error({ userId, err }, "Failed to create transactions");
 
     res.status(500).json({ error: "Failed to create transactions" });
   } finally {
@@ -140,22 +172,33 @@ router.post("/", async (req, res) => {
 });
 
 router.patch("/:id", async (req, res) => {
+  const userId = req.auth!.userId;
   const { id } = req.params;
-  const idResult = z.uuid().safeParse(id);
 
-  if (!idResult.success) {
+  req.log.debug({ userId, transactionId: id }, "Updating transaction...");
+
+  if (!id) {
+    req.log.warn(
+      { userId, transactionId: id },
+      "Updating transaction failed: Invalid transaction ID",
+    );
+
     return res.status(400).json({ error: "Invalid transaction ID" });
   }
 
   const parsed = updateTransactionSchema.safeParse(req.body);
 
   if (!parsed.success) {
+    req.log.warn(
+      { userId, transactionId: id, error: parsed.error.flatten().fieldErrors },
+      "Updating transaction failed: Invalid transaction data",
+    );
+
     return res
       .status(400)
       .json({ error: "Invalid transaction data", detail: parsed.error.issues });
   }
 
-  const userId = req.auth!.userId;
   const updates = parsed.data;
 
   const client = await pool.connect();
@@ -182,6 +225,11 @@ router.patch("/:id", async (req, res) => {
     );
 
     if (transactionResult.rowCount === 0) {
+      req.log.warn(
+        { userId, transactionId: id },
+        "Updating transaction failed: Transaction not found",
+      );
+
       await client.query("ROLLBACK");
       return res.status(404).json({ error: "Transaction not found" });
     }
@@ -212,6 +260,12 @@ router.patch("/:id", async (req, res) => {
 
     if (!validated.success) {
       await client.query("ROLLBACK");
+
+      req.log.warn(
+        { userId, transactionId: id, error: validated.error.issues },
+        "Updating transaction failed: Invalid transaction data",
+      );
+
       return res.status(400).json({
         error: "Invalid transaction data",
         detail: validated.error.issues,
@@ -239,6 +293,12 @@ router.patch("/:id", async (req, res) => {
 
     if (walletResult.rowCount === 0) {
       await client.query("ROLLBACK");
+
+      req.log.warn(
+        { userId, transactionId: id },
+        "Updating transaction failed: Wallet not found",
+      );
+
       return res.status(404).json({ error: "Wallet not found" });
     }
 
@@ -254,6 +314,12 @@ router.patch("/:id", async (req, res) => {
 
       if (categoryResult.rowCount === 0) {
         await client.query("ROLLBACK");
+
+        req.log.warn(
+          { userId, transactionId: id },
+          "Updating transaction failed: Category not found or incompatible with transaction type",
+        );
+
         return res.status(404).json({
           error: "Category not found or incompatible with transaction type",
         });
@@ -296,14 +362,71 @@ router.patch("/:id", async (req, res) => {
 
     await client.query("COMMIT");
 
+    req.log.info(
+      { userId, transactionId: id },
+      "Update transaction successfully",
+    );
+
     return res.status(200).json({ data: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("Failed to update transaction:", err);
+    req.log.error(
+      { userId, transactionId: id, err },
+      "Failed to update transaction",
+    );
 
     res.status(500).json({ error: "Failed to update transaction" });
   } finally {
     client.release();
+  }
+});
+
+router.delete("/:id", async (req, res) => {
+  const userId = req.auth!.userId;
+  const { id } = req.params;
+
+  req.log.debug({ userId, transactionId: id }, "Deleting transaction...");
+
+  if (!id) {
+    req.log.warn(
+      { userId, transactionId: id },
+      "Deleting transaction failed: Invalid transaction ID",
+    );
+
+    return res.status(400).json({ error: "Invalid transaction ID" });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      DELETE FROM transactions
+      WHERE id = $1 AND user_id = $2
+    `,
+      [id, userId],
+    );
+
+    if (result.rowCount === 0) {
+      req.log.warn(
+        { userId },
+        "Deleting transaction failed: Transaction not found",
+      );
+
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    req.log.info(
+      { userId, transactionId: id },
+      "Transaction deleted successfully",
+    );
+
+    res.status(204);
+  } catch (err) {
+    req.log.error(
+      { userId, transactionId: id },
+      "Failed to delete transaction",
+    );
+
+    res.status(500).json({ error: "Failed to delete transaction" });
   }
 });
 
