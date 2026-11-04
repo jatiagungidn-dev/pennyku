@@ -18,6 +18,11 @@ export interface CreateWalletInput {
   initial_balance: number;
 }
 
+export interface UpdateWalletInput {
+  name?: string;
+  type?: WalletType;
+}
+
 interface WalletListResponse {
   data: Wallet[];
 }
@@ -34,6 +39,15 @@ export async function getWallets(): Promise<Wallet[]> {
 
 export async function createWallet(input: CreateWalletInput): Promise<Wallet> {
   const response = await api.post<WalletResponse>("/api/wallets", input);
+
+  return response.data.data;
+}
+
+export async function updateWallet(
+  id: string,
+  input: UpdateWalletInput,
+): Promise<Wallet> {
+  const response = await api.patch<WalletResponse>(`/api/wallets/${id}`, input);
 
   return response.data.data;
 }

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import {
   createWallet,
+  updateWallet,
   deleteWallet,
   type Wallet,
   type WalletType,
@@ -31,6 +32,7 @@ export default function WalletSection({
 }: WalletSectionProps) {
   const [saving, setSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [walletToEdit, setWalletToEdit] = useState<Wallet | null>(null);
   const [deletingWalletId, setDeletingWalletId] = useState<string | null>(null);
   const [walletToDelete, setWalletToDelete] = useState<Wallet | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -83,6 +85,42 @@ export default function WalletSection({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleUpdateWallet(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!walletToEdit) return;
+
+    setSaving(true);
+    onError("");
+    onSuccess("");
+
+    try {
+      await updateWallet(walletToEdit.id, { name: name.trim(), type });
+
+      await onRefreshWallets();
+
+      setWalletToEdit(null);
+      setName("");
+      setType("cash");
+
+      onSuccess("Wallet berhasil diperbarui!");
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Gagal memperbarui wallet");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleEditClick(wallet: Wallet) {
+    setWalletToEdit(wallet);
+    setName(wallet.name);
+    setType(wallet.type);
+
+    setShowForm(false);
+    onError("");
+    onSuccess("");
   }
 
   async function handleDeleteWallet() {
@@ -174,6 +212,58 @@ export default function WalletSection({
         </form>
       )}
 
+      {walletToEdit && (
+        <form className="wallet-form" onSubmit={handleUpdateWallet}>
+          <h3>Edit wallet: {walletToEdit.name}</h3>
+
+          <div className="form-field">
+            <label htmlFor="edit-wallet-name">Wallet name</label>
+            <input
+              id="edit-wallet-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Dompet utama"
+              maxLength={100}
+              required
+            />
+          </div>
+
+          <div className="form-field">
+            <label htmlFor="edit-wallet-type">Wallet type</label>
+            <select
+              id="edit-wallet-type"
+              value={type}
+              onChange={(event) => setType(event.target.value as WalletType)}
+            >
+              <option value="cash">Cash</option>
+              <option value="bank">Bank</option>
+              <option value="e-wallet">E-Wallet</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div className="wallet-form-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                setWalletToEdit(null);
+                setName("");
+                setType("cash");
+                onError("");
+              }}
+              disabled={saving}
+            >
+              Cancel
+            </button>
+
+            <button className="submit-button" type="submit" disabled={saving}>
+              {saving ? "Saving..." : "Save changes"}
+            </button>
+          </div>
+        </form>
+      )}
+
       {wallets.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">▣</div>
@@ -205,14 +295,24 @@ export default function WalletSection({
                   {formatIDR(Number(wallet.current_balance))}
                 </strong>
 
-                <button
-                  type="button"
-                  className="danger-button"
-                  onClick={() => setWalletToDelete(wallet)}
-                  disabled={deletingWalletId === wallet.id}
-                >
-                  Delete
-                </button>
+                <div className="wallet-action-buttons">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => handleEditClick(wallet)}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    className="danger-button"
+                    onClick={() => setWalletToDelete(wallet)}
+                    disabled={deletingWalletId === wallet.id}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </article>
           ))}

@@ -1421,6 +1421,23 @@ button:disabled {
   font-size: 13px;
 }
 
+.wallet-action.buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wallet-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.wallet-form h3 {
+  margin: 0 0 8px;
+}
+
 /* ===============================
 
    Responsive
