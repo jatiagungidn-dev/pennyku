@@ -1,5 +1,8 @@
 import { useState } from "react";
-import type { Transaction } from "../services/transaction.service";
+import type {
+  Transaction,
+  TransactionPagination,
+} from "../services/transaction.service";
 import type { Wallet } from "../services/wallet.service";
 import TransactionForm from "./TransactionForm";
 import TransactionList from "./TransactionList";
@@ -7,6 +10,8 @@ import TransactionList from "./TransactionList";
 type TransactionSectionProps = {
   wallets: Wallet[];
   transactions: Transaction[];
+  pagination: TransactionPagination;
+  onPageChange: (page: number) => void;
   onTransactionSaved: (transaction: Transaction) => void;
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
@@ -15,6 +20,8 @@ type TransactionSectionProps = {
 export default function TransactionSection({
   wallets,
   transactions,
+  pagination,
+  onPageChange,
   onTransactionSaved,
   onError,
   onSuccess,
@@ -46,6 +53,8 @@ export default function TransactionSection({
 
       <TransactionList
         transactions={transactions}
+        pagination={pagination}
+        onPageChange={onPageChange}
         onEdit={setEditingTransaction}
       />
     </section>

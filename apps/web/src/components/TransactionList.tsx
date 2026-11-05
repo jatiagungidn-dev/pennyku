@@ -1,13 +1,20 @@
 import { formatIDR } from "../lib/format";
-import type { Transaction } from "../services/transaction.service";
+import type {
+  Transaction,
+  TransactionPagination,
+} from "../services/transaction.service";
 
 type TransactionListProps = {
   transactions: Transaction[];
+  pagination: TransactionPagination;
+  onPageChange: (page: number) => void;
   onEdit: (transaction: Transaction) => void;
 };
 
 export default function TransactionList({
   transactions,
+  pagination,
+  onPageChange,
   onEdit,
 }: TransactionListProps) {
   return (
@@ -54,6 +61,30 @@ export default function TransactionList({
               </div>
             </article>
           ))}
+        </div>
+      )}
+
+      {pagination.total > 0 && (
+        <div className="pagination">
+          <button
+            type="button"
+            onClick={() => onPageChange(pagination.page - 1)}
+            disabled={pagination.page <= 1}
+          >
+            Previous
+          </button>
+
+          <span>
+            Page {pagination.page} of {pagination.totalPages}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => onPageChange(pagination.page + 1)}
+            disabled={pagination.page >= pagination.totalPages}
+          >
+            Next
+          </button>
         </div>
       )}
     </div>

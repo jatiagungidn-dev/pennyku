@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { authClient } from "./lib/auth-client";
 import {
   getTransactions,
+  TransactionSummary,
   type Transaction,
+  type TransactionPagination,
 } from "./services/transaction.service";
 import { getWallets, type Wallet } from "./services/wallet.service";
 import AuthPage from "./components/AuthPage";
@@ -18,6 +20,17 @@ export default function App() {
   const [activeNav, setActiveNav] = useState("Overview");
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [pagination, setPagination] = useState<TransactionPagination>({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+  });
+  const [summary, setSummary] = useState<TransactionSummary>({
+    totalIncome: "0",
+    totalExpense: "0",
+    totalTransactions: 0,
+  });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isDashboardDataLoading, setIsDashboardDataLoading] = useState(true);
@@ -31,17 +44,44 @@ export default function App() {
     try {
       const [walletData, transactionData] = await Promise.all([
         getWallets(),
-        getTransactions(),
+        getTransactions(1, 10),
       ]);
 
       setWallets(walletData);
-      setTransactions(transactionData);
+      setTransactions(transactionData.data);
+      setPagination(transactionData.pagination);
+      setSummary(transactionData.summary);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Gagal memuat data dashboard.",
       );
     } finally {
       setIsDashboardDataLoading(false);
+    }
+  }
+
+  async function handlePageChange(page: number) {
+    try {
+      const transactionData = await getTransactions(page, pagination.limit);
+
+      setTransactions(transactionData.data);
+      setPagination(transactionData.pagination);
+      setSummary(transactionData.summary);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memuat transaksi.");
+    }
+  }
+
+  async function handleTransactionSaved(_saved: Transaction) {
+    try {
+      const transactionData = await getTransactions(1, pagination.limit);
+
+      setTransactions(transactionData.data);
+      setPagination(transactionData.pagination);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Gagal memuat ulang transaksi",
+      );
     }
   }
 
@@ -104,6 +144,7 @@ export default function App() {
           <OverviewSection
             wallets={wallets}
             transactions={transactions}
+            summary={summary}
             loading={isDashboardDataLoading}
           />
         )}
@@ -122,23 +163,9 @@ export default function App() {
           <TransactionSection
             wallets={wallets}
             transactions={transactions}
-            onTransactionSaved={async (saved) => {
-              setTransactions((current) => {
-                const exists = current.some(
-                  (transaction) => transaction.id === saved.id,
-                );
-
-                if (exists) {
-                  return current.map((transaction) =>
-                    transaction.id === saved.id ? saved : transaction,
-                  );
-                }
-
-                return [saved, ...current];
-              });
-
-              await loadDashboardData();
-            }}
+            pagination={pagination}
+            onPageChange={handlePageChange}
+            onTransactionSaved={handleTransactionSaved}
             onError={setError}
             onSuccess={setSuccess}
           />

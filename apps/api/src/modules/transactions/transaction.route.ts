@@ -3,6 +3,7 @@ import z from "zod";
 import { pool } from "../../config/db.js";
 import {
   createTransactionSchema,
+  paginationSchema,
   updateTransactionSchema,
 } from "./transaction.schema.js";
 
@@ -12,7 +13,42 @@ router.get("/", async (req, res) => {
   const userId = req.auth!.userId;
   req.log.debug({ userId }, "Fetching transactions...");
 
+  const parsed = paginationSchema.safeParse(req.query);
+
+  if (!parsed.success) {
+    req.log.warn(
+      { userId, error: parsed.error.issues },
+      "Fetching transactions failed: Invalid pagination parameters",
+    );
+
+    return res.status(400).json({
+      error: "Invalid pagination parameters",
+      detail: parsed.error.issues,
+    });
+  }
+
+  const { page, limit } = parsed.data;
+  const offset = (page - 1) * limit;
+
   try {
+    const countResult = await pool.query(
+      `
+      SELECT COUNT(*)::int AS total,
+      COALESCE(
+        SUM(t.amount) FILTER (WHERE t.type = 'income'), 0
+      )::text AS total_income,
+      COALESCE(
+        SUM(t.amount) FILTER (WHERE t.type = 'expense'), 0
+      )::text AS total_expense
+      FROM transactions t
+      JOIN wallets w ON w.id = t.wallet_id
+      WHERE w.user_id = $1
+    `,
+      [userId],
+    );
+
+    const total = countResult.rows[0].total;
+
     const result = await pool.query(
       `
         SELECT 
@@ -32,24 +68,29 @@ router.get("/", async (req, res) => {
         LEFT JOIN categories c ON c.id = t.category_id
         WHERE w.user_id = $1
         ORDER BY t.transaction_date DESC, t.created_at DESC
+        LIMIT $2 OFFSET $3
     `,
-      [userId],
+      [userId, limit, offset],
     );
-
-    if (result.rowCount === 0) {
-      req.log.warn(
-        { userId },
-        "Fetching transactions failed: Transaction is empty",
-      );
-
-      return res.status(404).json({ error: "Transaction is empty" });
-    }
 
     req.log.info(
-      { userId, count: result.rowCount },
+      { userId, page, limit, total, count: result.rowCount },
       "Fetching transactions successfully",
     );
-    res.status(200).json({ data: result.rows });
+    res.status(200).json({
+      data: result.rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+      summary: {
+        totalIncome: countResult.rows[0].total_income,
+        totalExpense: countResult.rows[0].total_expense,
+        totalTransactions: total,
+      },
+    });
   } catch (err) {
     req.log.error({ userId, err }, "Failed to fetch transactions");
 

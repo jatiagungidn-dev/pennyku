@@ -16,6 +16,25 @@ export interface Transaction {
   category_name?: string | null;
 }
 
+export interface TransactionPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface TransactionSummary {
+  totalIncome: string;
+  totalExpense: string;
+  totalTransactions: number;
+}
+
+export interface PaginatedTransactions {
+  data: Transaction[];
+  pagination: TransactionPagination;
+  summary: TransactionSummary;
+}
+
 export interface CreateTransactionInput {
   wallet_id: string;
   category_id: string | null;
@@ -42,11 +61,15 @@ interface ItemResponse<T> {
   data: T;
 }
 
-export async function getTransactions(): Promise<Transaction[]> {
-  const response =
-    await api.get<ListResponse<Transaction>>("/api/transactions");
+export async function getTransactions(
+  page: number = 1,
+  limit: number = 10,
+): Promise<PaginatedTransactions> {
+  const response = await api.get<PaginatedTransactions>("/api/transactions", {
+    params: { page, limit },
+  });
 
-  return response.data.data;
+  return response.data;
 }
 
 export async function createTransaction(
@@ -65,7 +88,7 @@ export async function updateTransaction(
   input: UpdateTransactionInput,
 ): Promise<Transaction> {
   const response = await api.patch<ItemResponse<Transaction>>(
-    `/api/transaction/${id}`,
+    `/api/transactions/${id}`,
     input,
   );
 

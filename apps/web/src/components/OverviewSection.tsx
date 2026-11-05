@@ -1,16 +1,21 @@
 import { formatIDR } from "../lib/format";
-import type { Transaction } from "../services/transaction.service";
+import type {
+  Transaction,
+  TransactionSummary,
+} from "../services/transaction.service";
 import type { Wallet } from "../services/wallet.service";
 
 type OverviewSectionProps = {
   wallets: Wallet[];
   transactions: Transaction[];
+  summary: TransactionSummary;
   loading: boolean;
 };
 
 export default function OverviewSection({
   wallets,
   transactions,
+  summary,
   loading,
 }: OverviewSectionProps) {
   const totalBalance = wallets.reduce(
@@ -18,13 +23,9 @@ export default function OverviewSection({
     0,
   );
 
-  const totalIncome = transactions
-    .filter((transaction) => transaction.type === "income")
-    .reduce((total, transaction) => total + Number(transaction.amount), 0);
+  const totalIncome = Number(summary.totalIncome);
 
-  const totalExpense = transactions
-    .filter((transaction) => transaction.type === "expense")
-    .reduce((total, transaction) => total + Number(transaction.amount), 0);
+  const totalExpense = Number(summary.totalExpense);
 
   return (
     <>
@@ -72,7 +73,7 @@ export default function OverviewSection({
             <span className="summary-icon expense-icon">⇄</span>
           </div>
 
-          <strong>{transactions.length}</strong>
+          <strong>{summary.totalTransactions}</strong>
           <p>Semua transaksi yang sudah kamu catat.</p>
         </article>
       </section>
