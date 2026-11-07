@@ -9,6 +9,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().trim().min(1),
   NEON_AUTH_JWKS_URL: z.string().url(),
   NEON_AUTH_ISSUER: z.string().url(),
+  CORS_ORIGIN: z.string().default("http://localhost:5173"),
 });
 
 const parsed = envSchema.safeParse(process.env);

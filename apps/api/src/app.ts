@@ -39,11 +39,19 @@ export function createApp(authMiddleware: RequestHandler = requireAuth) {
       },
     }),
   );
+
+  const allowedOrigins = (
+    process.env.CORS_ORIGIN ?? "https://jl97mngp-5173.asse.devtunnels.ms"
+  )
+    .split(",")
+    .map((origin) => origin.trim());
+
   app.use(
     cors({
-      origin: "*",
+      origin: allowedOrigins,
     }),
   );
+
   app.use(express.json());
 
   app.use("/api/wallets", authMiddleware, walletsRouter);

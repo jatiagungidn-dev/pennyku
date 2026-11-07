@@ -11,7 +11,6 @@ import { formatIDR } from "../lib/format";
 type WalletSectionProps = {
   wallets: Wallet[];
   onRefreshWallets: () => Promise<void>;
-  onWalletsChange: (wallets: Wallet[]) => void;
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
 };
@@ -26,7 +25,6 @@ const walletTypeLabel: Record<WalletType, string> = {
 export default function WalletSection({
   wallets,
   onRefreshWallets,
-  onWalletsChange,
   onError,
   onSuccess,
 }: WalletSectionProps) {
@@ -46,7 +44,9 @@ export default function WalletSection({
     try {
       await onRefreshWallets();
     } catch (err) {
-      onError("Gagal menyinkronkan data wallet.");
+      onError(
+        err instanceof Error ? err.message : "Gagal menyinkronkan data wallet.",
+      );
     } finally {
       setIsRefreshing(false);
     }
@@ -133,7 +133,7 @@ export default function WalletSection({
     try {
       await deleteWallet(walletToDelete.id);
 
-      onWalletsChange(wallets.filter((item) => item.id !== walletToDelete.id));
+      await onRefreshWallets();
 
       onSuccess(`Wallet "${walletToDelete.name}" berhasil dihapus.`);
       setWalletToDelete(null);

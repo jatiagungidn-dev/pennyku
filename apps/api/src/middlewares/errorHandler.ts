@@ -9,7 +9,9 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   if (err instanceof AppError) {
     req.log.warn({ err, statusCode: err.statusCode }, err.message);
 
-    return res.status(err.statusCode).json({ error: err.message });
+    return res
+      .status(err.statusCode)
+      .json({ error: err.message, ...err.details });
   }
 
   req.log.error({ err }, "An unexpected error occurred");

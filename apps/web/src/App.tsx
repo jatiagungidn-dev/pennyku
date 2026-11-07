@@ -17,6 +17,9 @@ import TransactionSection from "./components/TransactionSection";
 export default function App() {
   const session = authClient.useSession();
 
+  const [theme, setTheme] = useState<"light" | "dark">(() =>
+    localStorage.getItem("pennyku-theme") === "dark" ? "dark" : "light",
+  );
   const [activeNav, setActiveNav] = useState("Overview");
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -37,15 +40,26 @@ export default function App() {
 
   const isAuthenticated = Boolean(session.data?.user);
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("pennyku-theme", theme);
+  }, [theme]);
+
+  async function fetchDashboardData() {
+    const [walletData, transactionData] = await Promise.all([
+      getWallets(),
+      getTransactions(1, 10),
+    ]);
+
+    return { walletData, transactionData };
+  }
+
   async function loadDashboardData() {
     setIsDashboardDataLoading(true);
     setError("");
 
     try {
-      const [walletData, transactionData] = await Promise.all([
-        getWallets(),
-        getTransactions(1, 10),
-      ]);
+      const { walletData, transactionData } = await fetchDashboardData();
 
       setWallets(walletData);
       setTransactions(transactionData.data);
@@ -72,12 +86,13 @@ export default function App() {
     }
   }
 
-  async function handleTransactionSaved(_saved: Transaction) {
+  async function handleTransactionSaved() {
     try {
       const transactionData = await getTransactions(1, pagination.limit);
 
       setTransactions(transactionData.data);
       setPagination(transactionData.pagination);
+      setSummary(transactionData.summary);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Gagal memuat ulang transaksi",
@@ -87,7 +102,37 @@ export default function App() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    void loadDashboardData();
+
+    let ignore = false;
+
+    async function loadInitialDashboardData() {
+      try {
+        const { walletData, transactionData } = await fetchDashboardData();
+
+        if (ignore) return;
+
+        setWallets(walletData);
+        setTransactions(transactionData.data);
+        setPagination(transactionData.pagination);
+        setSummary(transactionData.summary);
+      } catch (err) {
+        if (!ignore) {
+          setError(
+            err instanceof Error ? err.message : "Gagal memuat data dashboard.",
+          );
+        }
+      } finally {
+        if (!ignore) {
+          setIsDashboardDataLoading(false);
+        }
+      }
+    }
+
+    void loadInitialDashboardData();
+
+    return () => {
+      ignore = true;
+    };
   }, [isAuthenticated]);
 
   function handleNavChange(newNav: string) {
@@ -126,7 +171,14 @@ export default function App() {
       />
 
       <section className="dashboard-main">
-        <DashboardHeader activeNav={activeNav} userName={user.name} />
+        <DashboardHeader
+          activeNav={activeNav}
+          userName={user.name}
+          theme={theme}
+          onThemeToggle={() =>
+            setTheme((current) => (current === "light" ? "dark" : "light"))
+          }
+        />
 
         {error && (
           <div className="form-message error" role="alert">
@@ -153,7 +205,6 @@ export default function App() {
           <WalletSection
             wallets={wallets}
             onRefreshWallets={loadDashboardData}
-            onWalletsChange={setWallets}
             onError={setError}
             onSuccess={setSuccess}
           />
