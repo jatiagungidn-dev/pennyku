@@ -45,15 +45,21 @@ export default function App() {
     localStorage.setItem("pennyku-theme", theme);
   }, [theme]);
 
+  async function fetchDashboardData() {
+    const [walletData, transactionData] = await Promise.all([
+      getWallets(),
+      getTransactions(1, 10),
+    ]);
+
+    return { walletData, transactionData };
+  }
+
   async function loadDashboardData() {
     setIsDashboardDataLoading(true);
     setError("");
 
     try {
-      const [walletData, transactionData] = await Promise.all([
-        getWallets(),
-        getTransactions(1, 10),
-      ]);
+      const { walletData, transactionData } = await fetchDashboardData();
 
       setWallets(walletData);
       setTransactions(transactionData.data);
@@ -80,7 +86,7 @@ export default function App() {
     }
   }
 
-  async function handleTransactionSaved(_saved: Transaction) {
+  async function handleTransactionSaved() {
     try {
       const transactionData = await getTransactions(1, pagination.limit);
 
@@ -96,7 +102,37 @@ export default function App() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    void loadDashboardData();
+
+    let ignore = false;
+
+    async function loadInitialDashboardData() {
+      try {
+        const { walletData, transactionData } = await fetchDashboardData();
+
+        if (ignore) return;
+
+        setWallets(walletData);
+        setTransactions(transactionData.data);
+        setPagination(transactionData.pagination);
+        setSummary(transactionData.summary);
+      } catch (err) {
+        if (!ignore) {
+          setError(
+            err instanceof Error ? err.message : "Gagal memuat data dashboard.",
+          );
+        }
+      } finally {
+        if (!ignore) {
+          setIsDashboardDataLoading(false);
+        }
+      }
+    }
+
+    void loadInitialDashboardData();
+
+    return () => {
+      ignore = true;
+    };
   }, [isAuthenticated]);
 
   function handleNavChange(newNav: string) {

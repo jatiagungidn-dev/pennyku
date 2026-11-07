@@ -4,24 +4,23 @@ import { pool } from "../../config/db.js";
 const router = Router();
 
 router.get("/", async (req, res) => {
-  try {
-    const userId = req.auth!.userId;
-    const result = await pool.query(
-      `
+  const userId = req.auth!.userId;
+
+  req.log.debug({ userId }, "Fetching categories...");
+
+  const result = await pool.query(
+    `
         SELECT id, name, type, icon, color
         FROM categories
         WHERE user_id IS NULL OR user_id = $1
         ORDER BY type, name
     `,
-      [userId],
-    );
+    [userId],
+  );
 
-    res.status(200).json({ data: result.rows });
-  } catch (err) {
-    console.error("Failed to fetch categories:", err);
+  req.log.info({ userId }, "Categories fetched successfully");
 
-    res.status(500).json({ error: "Failed to fetch categories" });
-  }
+  res.status(200).json({ data: result.rows });
 });
 
 export default router;

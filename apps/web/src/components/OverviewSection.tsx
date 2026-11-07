@@ -14,7 +14,6 @@ type OverviewSectionProps = {
 
 export default function OverviewSection({
   wallets,
-  transactions,
   summary,
   loading,
 }: OverviewSectionProps) {

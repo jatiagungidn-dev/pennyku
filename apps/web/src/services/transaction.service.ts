@@ -53,10 +53,6 @@ export interface UpdateTransactionInput {
   transaction_date?: string;
 }
 
-interface ListResponse<T> {
-  data: T[];
-}
-
 interface ItemResponse<T> {
   data: T;
 }

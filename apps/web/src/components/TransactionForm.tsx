@@ -77,21 +77,19 @@ export default function TransactionForm({
     void loadCategories();
   }, [onError]);
 
-  useEffect(() => {
+  const selectedCategoryId = useMemo(() => {
     if (
-      categoriesLoaded &&
-      categoryId &&
-      !filteredCategories.some((category) => category.id === categoryId)
+      !categoriesLoaded ||
+      !categoryId ||
+      filteredCategories.some((category) => category.id === categoryId)
     ) {
-      setCategoryId("");
+      return categoryId;
     }
-  }, [categoriesLoaded, filteredCategories, categoryId]);
 
-  useEffect(() => {
-    if (!walletId && wallets.length > 0) {
-      setWalletId(wallets[0].id);
-    }
-  }, [walletId, wallets]);
+    return "";
+  }, [categoriesLoaded, categoryId, filteredCategories]);
+
+  const selectedWalletId = walletId || wallets[0]?.id || "";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -106,7 +104,7 @@ export default function TransactionForm({
       return;
     }
 
-    if (!walletId) {
+    if (!selectedWalletId) {
       onError("Buat wallet terlebih dahulu sebelum mencatat transaksi.");
       return;
     }
@@ -115,8 +113,8 @@ export default function TransactionForm({
 
     try {
       const input = {
-        wallet_id: walletId,
-        category_id: categoryId || null,
+        wallet_id: selectedWalletId,
+        category_id: selectedCategoryId || null,
         type,
         amount: numericAmount,
         description: description.trim(),
@@ -220,7 +218,7 @@ export default function TransactionForm({
 
           <select
             id="transaction-wallet"
-            value={walletId}
+            value={selectedWalletId}
             onChange={(event) => setWalletId(event.target.value)}
             required
           >
@@ -237,7 +235,7 @@ export default function TransactionForm({
 
           <select
             id="transaction-category"
-            value={categoryId}
+            value={selectedCategoryId}
             onChange={(event) => setCategoryId(event.target.value)}
             disabled={!categoriesLoaded}
           >

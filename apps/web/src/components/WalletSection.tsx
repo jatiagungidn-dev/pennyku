@@ -44,7 +44,9 @@ export default function WalletSection({
     try {
       await onRefreshWallets();
     } catch (err) {
-      onError("Gagal menyinkronkan data wallet.");
+      onError(
+        err instanceof Error ? err.message : "Gagal menyinkronkan data wallet.",
+      );
     } finally {
       setIsRefreshing(false);
     }
