@@ -125,7 +125,7 @@ router.patch("/:id", async (req, res) => {
 
     const walletResult = await client.query(
       `
-        SELECT id
+        SELECT id, name, type
         FROM wallets
         WHERE id = $1 AND user_id = $2
         FOR UPDATE

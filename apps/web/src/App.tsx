@@ -17,6 +17,9 @@ import TransactionSection from "./components/TransactionSection";
 export default function App() {
   const session = authClient.useSession();
 
+  const [theme, setTheme] = useState<"light" | "dark">(() =>
+    localStorage.getItem("pennyku-theme") === "dark" ? "dark" : "light",
+  );
   const [activeNav, setActiveNav] = useState("Overview");
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -36,6 +39,11 @@ export default function App() {
   const [isDashboardDataLoading, setIsDashboardDataLoading] = useState(true);
 
   const isAuthenticated = Boolean(session.data?.user);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("pennyku-theme", theme);
+  }, [theme]);
 
   async function loadDashboardData() {
     setIsDashboardDataLoading(true);
@@ -78,6 +86,7 @@ export default function App() {
 
       setTransactions(transactionData.data);
       setPagination(transactionData.pagination);
+      setSummary(transactionData.summary);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Gagal memuat ulang transaksi",
@@ -126,7 +135,14 @@ export default function App() {
       />
 
       <section className="dashboard-main">
-        <DashboardHeader activeNav={activeNav} userName={user.name} />
+        <DashboardHeader
+          activeNav={activeNav}
+          userName={user.name}
+          theme={theme}
+          onThemeToggle={() =>
+            setTheme((current) => (current === "light" ? "dark" : "light"))
+          }
+        />
 
         {error && (
           <div className="form-message error" role="alert">
@@ -153,7 +169,6 @@ export default function App() {
           <WalletSection
             wallets={wallets}
             onRefreshWallets={loadDashboardData}
-            onWalletsChange={setWallets}
             onError={setError}
             onSuccess={setSuccess}
           />

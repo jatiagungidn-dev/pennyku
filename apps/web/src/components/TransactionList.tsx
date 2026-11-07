@@ -41,7 +41,7 @@ export default function TransactionList({
                 <span>
                   {transaction.wallet_name ?? "Wallet"} ·{" "}
                   {transaction.category_name ?? "Uncategorized"} ·{" "}
-                  {transaction.transaction_date}
+                  {transaction.transaction_date.slice(0, 10).replaceAll("-", "/")}
                 </span>
               </div>
 

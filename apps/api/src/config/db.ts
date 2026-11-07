@@ -7,6 +7,6 @@ export const pool = new Pool({
   connectionTimeoutMillis: 30_000,
   idleTimeoutMillis: 10_000,
   ssl: {
-    rejectUnauthorized: false,
+    rejectUnauthorized: true,
   },
 });
