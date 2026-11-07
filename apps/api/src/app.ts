@@ -8,6 +8,8 @@ import transactionsRouter from "./modules/transactions/transaction.route.js";
 
 import { requireAuth } from "./middlewares/requireAuth.js";
 import { logger } from "./config/logger.js";
+import { errorHandler } from "./middlewares/errorHandler.js";
+import { notFoundHandler } from "./middlewares/notFoundHandler.js";
 
 export function createApp(authMiddleware: RequestHandler = requireAuth) {
   const app = express();
@@ -51,6 +53,10 @@ export function createApp(authMiddleware: RequestHandler = requireAuth) {
   app.get("/", (_req, res) => {
     res.status(200).json({ status: "ok", service: "PennyKu" });
   });
+
+  app.use(notFoundHandler);
+
+  app.use(errorHandler);
 
   return app;
 }

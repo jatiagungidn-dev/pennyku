@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll, beforeAll, beforeEach } from "vitest";
 import request from "supertest";
 
 import { createApp } from "../app.js";
-import { TEST_USER_ID, testAuth } from "../test/test-auth.js";
+import { TEST_USER_ID, testAuth } from "./test-auth.js";
 import { pool } from "../config/db.js";
 
 const app = createApp(testAuth);
@@ -148,7 +148,7 @@ describe("PATCH /api/wallets/:id", () => {
   it("should return 404 when wallet doesn't exist", async () => {
     const response = await request(app)
       .patch("/api/wallets/00000000-0000-4000-8000-000000000099")
-      .send(providedWallet);
+      .send(updatedWallet);
 
     expect(response.status).toBe(404);
     expect(response.body.error).toBe("Wallet not found");

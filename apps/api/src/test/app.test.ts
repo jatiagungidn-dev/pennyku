@@ -13,3 +13,12 @@ describe("GET /", () => {
     });
   });
 });
+
+describe("Unknown routes", () => {
+  it("should return 404 when route doesn't exist", async () => {
+    const response = await request(app).get("/api/unknown");
+
+    expect(response.statusCode).toBe(404);
+    expect(response.body.error).toBe("Route GET /api/unknown not found");
+  });
+});

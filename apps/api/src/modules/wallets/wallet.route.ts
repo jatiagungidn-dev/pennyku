@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../../config/db.js";
 import { createWalletSchema, updateWalletSchema } from "./wallet.schema.js";
+import { AppError } from "../../errors/AppError.js";
 
 const router = Router();
 
@@ -12,9 +13,8 @@ router.get("/", async (req, res) => {
     "Fetching wallets with calculated current balance...",
   );
 
-  try {
-    const result = await pool.query(
-      `
+  const result = await pool.query(
+    `
         SELECT 
           w.id,
           w.name,
@@ -38,20 +38,15 @@ router.get("/", async (req, res) => {
         GROUP BY w.id
         ORDER BY w.created_at DESC;
     `,
-      [userId],
-    );
+    [userId],
+  );
 
-    req.log.info(
-      { userId, count: result.rowCount },
-      "Successfully fetched wallets",
-    );
+  req.log.info(
+    { userId, count: result.rowCount },
+    "Successfully fetched wallets",
+  );
 
-    res.status(200).json({ data: result.rows });
-  } catch (err) {
-    req.log.error({ err, userId }, "Failed to fetch wallets");
-
-    res.status(500).json({ error: "Failed to fetch wallets" });
-  }
+  res.status(200).json({ data: result.rows });
 });
 
 router.post("/", async (req, res) => {
@@ -67,37 +62,28 @@ router.post("/", async (req, res) => {
       "Wallet creation failed: Invalid request data",
     );
 
-    return res.status(400).json({
-      error: "Invalid wallet data",
-      detail: parsed.error.flatten().fieldErrors,
-    });
+    throw new AppError("Invalid wallet data", 400);
   }
 
   const { name, type, initial_balance } = parsed.data;
 
-  try {
-    const result = await pool.query(
-      `
+  const result = await pool.query(
+    `
         INSERT INTO wallets (name, type, initial_balance, user_id)
         VALUES ($1, $2, $3, $4)
         RETURNING id, name, type, initial_balance, created_at, updated_at
     `,
-      [name, type, initial_balance, userId],
-    );
+    [name, type, initial_balance, userId],
+  );
 
-    const wallet = result.rows[0];
+  const wallet = result.rows[0];
 
-    req.log.info(
-      { userId, walletId: wallet.id, walletName: wallet.name },
-      "successfully created wallet",
-    );
+  req.log.info(
+    { userId, walletId: wallet.id, walletName: wallet.name },
+    "successfully created wallet",
+  );
 
-    res.status(201).json({ data: wallet });
-  } catch (err) {
-    req.log.error({ err, userId }, "Failed to create wallets");
-
-    res.status(500).json({ error: "Failed to create wallets" });
-  }
+  res.status(201).json({ data: wallet });
 });
 
 router.patch("/:id", async (req, res) => {
@@ -110,7 +96,7 @@ router.patch("/:id", async (req, res) => {
       "Wallet update failed: Missing wallet ID",
     );
 
-    return res.status(400).json({ error: "Invalid wallet ID" });
+    throw new AppError("Invalid wallet ID", 400);
   }
 
   req.log.debug({ userId, walletId: id }, "Updating wallet...");
@@ -127,20 +113,15 @@ router.patch("/:id", async (req, res) => {
       "Wallet update failed: Invalid wallet data",
     );
 
-    return res.status(400).json({
-      error: "Invalid wallet data",
-      detail: parsed.error.flatten().fieldErrors,
-    });
+    throw new AppError("Invalid wallet data", 400);
   }
 
   const updates = parsed.data;
 
   const client = await pool.connect();
-  let transactionStarted = false;
 
   try {
     await client.query("BEGIN");
-    transactionStarted = true;
 
     const walletResult = await client.query(
       `
@@ -154,16 +135,13 @@ router.patch("/:id", async (req, res) => {
 
     if (walletResult.rowCount === 0) {
       await client.query("ROLLBACK");
-      transactionStarted = false;
 
       req.log.warn(
         { userId, walletId: id },
         "Wallet update failed: Wallet not found",
       );
 
-      return res.status(404).json({
-        error: "Wallet not found",
-      });
+      throw new AppError("Wallet not found", 404);
     }
 
     const existing = walletResult.rows[0];
@@ -193,7 +171,6 @@ router.patch("/:id", async (req, res) => {
     );
 
     await client.query("COMMIT");
-    transactionStarted = false;
 
     req.log.info({ userId, walletId: id }, "Successfully updated wallet");
 
@@ -201,22 +178,8 @@ router.patch("/:id", async (req, res) => {
       data: result.rows[0],
     });
   } catch (err) {
-    if (transactionStarted) {
-      try {
-        await client.query("ROLLBACK");
-      } catch (rollbackErr) {
-        req.log.error(
-          { err: rollbackErr, userId, walletId: id },
-          "Failed to rollback wallet update",
-        );
-      }
-    }
-
-    req.log.error({ err, userId, walletId: id }, "Failed to update wallet");
-
-    return res.status(500).json({
-      error: "Failed to update wallet",
-    });
+    await client.query("ROLLBACK");
+    throw err;
   } finally {
     client.release();
   }
@@ -228,39 +191,33 @@ router.delete("/:id", async (req, res) => {
 
   req.log.debug({ userId, walletId: id }, "Deleting wallet...");
 
-  try {
-    if (!id) {
-      req.log.warn({ userId }, "Wallet deletion failed: Missing wallet ID");
+  if (!id) {
+    req.log.warn({ userId }, "Wallet deletion failed: Missing wallet ID");
 
-      return res.status(400).json({ error: "Invalid wallet ID" });
-    }
+    return res.status(400).json({ error: "Invalid wallet ID" });
+  }
 
-    const result = await pool.query(
-      `
+  const result = await pool.query(
+    `
       DELETE FROM wallets
       WHERE id = $1 AND user_id = $2
       RETURNING id;
     `,
-      [id, userId],
+    [id, userId],
+  );
+
+  if (result.rowCount === 0) {
+    req.log.warn(
+      { userId, walletId: id },
+      "Wallet deletion failed: Wallet not found",
     );
 
-    if (result.rowCount === 0) {
-      req.log.warn(
-        { userId, walletId: id },
-        "Wallet deletion failed: Wallet not found",
-      );
-
-      return res.status(404).json({ error: "Wallet not found" });
-    }
-
-    req.log.info({ userId, walletId: id }, "Wallet deleted successfully");
-
-    res.status(200).json({ data: result.rows[0].id });
-  } catch (err) {
-    req.log.error({ err, userId, walletId: id }, "Failed to delete wallet");
-
-    res.status(500).json({ error: "Failed to delete wallet" });
+    return res.status(404).json({ error: "Wallet not found" });
   }
+
+  req.log.info({ userId, walletId: id }, "Wallet deleted successfully");
+
+  res.status(200).json({ data: result.rows[0].id });
 });
 
 export default router;
