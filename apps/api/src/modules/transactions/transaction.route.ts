@@ -289,7 +289,7 @@ router.post("/", async (req, res) => {
 
     const responseBody = { data: result.rows[0] };
 
-    const idempotencyResult = await client.query(
+    const updateResult = await client.query(
       `
         UPDATE idempotency_keys
         SET
@@ -299,6 +299,15 @@ router.post("/", async (req, res) => {
       `,
       [201, responseBody, userId, idempotencyKey],
     );
+
+    if (updateResult.rowCount === 0) {
+      req.log.warn(
+        { userId },
+        "Creating transaction failed: Failed to store idempotency response",
+      );
+
+      throw new AppError("Failed to store idempotency response", 500);
+    }
 
     await client.query("COMMIT");
 

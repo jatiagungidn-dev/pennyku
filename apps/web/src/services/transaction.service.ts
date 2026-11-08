@@ -70,10 +70,12 @@ export async function getTransactions(
 
 export async function createTransaction(
   input: CreateTransactionInput,
+  idempotencyKey: string,
 ): Promise<Transaction> {
   const response = await api.post<ItemResponse<Transaction>>(
     "/api/transactions",
     input,
+    { headers: { "Idempotency-Key": idempotencyKey } },
   );
 
   return response.data.data;

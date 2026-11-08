@@ -10,6 +10,7 @@ import { requireAuth } from "./middlewares/requireAuth.js";
 import { logger } from "./config/logger.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { notFoundHandler } from "./middlewares/notFoundHandler.js";
+import { env } from "./config/env.js";
 
 export function createApp(authMiddleware: RequestHandler = requireAuth) {
   const app = express();
@@ -40,15 +41,9 @@ export function createApp(authMiddleware: RequestHandler = requireAuth) {
     }),
   );
 
-  const allowedOrigins = (
-    process.env.CORS_ORIGIN ?? "https://jl97mngp-5173.asse.devtunnels.ms"
-  )
-    .split(",")
-    .map((origin) => origin.trim());
-
   app.use(
     cors({
-      origin: allowedOrigins,
+      origin: env.CORS_ORIGIN,
     }),
   );
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, useRef, type FormEvent } from "react";
 
 import {
   createTransaction,
@@ -56,6 +56,8 @@ export default function TransactionForm({
   );
 
   const [saving, setSaving] = useState(false);
+
+  const idempotencyKeyRef = useRef<string | null>(null);
 
   const filteredCategories = useMemo(
     () => categories.filter((category) => category.type === type),
@@ -121,9 +123,15 @@ export default function TransactionForm({
         transaction_date: transactionDate,
       };
 
-      const saved = initialTransaction
-        ? await updateTransaction(initialTransaction.id, input)
-        : await createTransaction(input);
+      let saved: Transaction;
+
+      if (initialTransaction) {
+        saved = await updateTransaction(initialTransaction.id, input);
+      } else {
+        const idempotencyKey = idempotencyKeyRef.current ?? crypto.randomUUID();
+        idempotencyKeyRef.current = idempotencyKey;
+        saved = await createTransaction(input, idempotencyKey);
+      }
 
       const wallet = wallets.find((item) => item.id === saved.wallet_id);
 
@@ -144,6 +152,7 @@ export default function TransactionForm({
       );
 
       if (!isEditing) {
+        idempotencyKeyRef.current = null;
         setAmount("");
         setDescription("");
         setCategoryId("");
