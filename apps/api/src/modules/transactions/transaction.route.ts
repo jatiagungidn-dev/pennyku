@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { createHash } from "node:crypto";
+
 import { pool } from "../../config/db.js";
 import { AppError } from "../../errors/AppError.js";
 import {
@@ -96,6 +98,17 @@ router.post("/", async (req, res) => {
 
   req.log.debug({ userId }, "Creating transaction...");
 
+  const idempotencyKey = req.get("Idempotency-Key")?.trim();
+
+  if (!idempotencyKey || idempotencyKey.length > 255) {
+    req.log.warn(
+      { userId },
+      "Creating transaction failed: Invalid Idempotency-Key header",
+    );
+
+    throw new AppError("A valid Idempotency-Key header is required", 400);
+  }
+
   const parsed = createTransactionSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -118,10 +131,95 @@ router.post("/", async (req, res) => {
     transaction_date,
   } = parsed.data;
 
+  const normalizePayload = {
+    wallet_id,
+    category_id: category_id ?? null,
+    type,
+    amount,
+    description: description?.trim() || null,
+    transaction_date: transaction_date ?? null,
+  };
+
+  const requiredHash = createHash("sha256")
+    .update(JSON.stringify(normalizePayload))
+    .digest("hex");
+
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
+
+    const claimResult = await client.query(
+      `
+        INSERT INTO idempotency_keys (
+            user_id,
+            idempotency_key,
+            request_hash,
+            expires_at
+        )
+        VALUES (
+            $1,
+            $2,
+            $3,
+            NOW() + INTERVAL '24 hours'
+        )
+        ON CONFLICT (user_id, idempotency_key)
+        DO UPDATE SET
+            request_hash = EXCLUDED.request_hash,
+            response_status = NULL,
+            response_body = NULL,
+            created_at = NOW(),
+            expires_at = NOW() + INTERVAL '24 hours'
+        WHERE idempotency_key.expires_at <= NOW()
+        RETURNING id
+      `,
+      [userId, idempotencyKey, requiredHash],
+    );
+
+    if (claimResult.rowCount === 0) {
+      const existingResult = await client.query(
+        `
+          SELECT
+            require_hash,
+            response_status,
+            response_body
+          FROM idempotency_keys
+          WHERE user_id = $1 AND idempotency_key = $2
+        `,
+        [userId, idempotencyKey],
+      );
+
+      const existing = existingResult.rows[0];
+
+      if (!existing) {
+        throw new AppError("Unable to process idempotency key", 500);
+      }
+
+      if (existing.result_hash !== requiredHash) {
+        throw new AppError(
+          "Idempotency key has already been used with a different request",
+          409,
+        );
+      }
+
+      if (
+        existing.response_status === null ||
+        existing.response_body === null
+      ) {
+        throw new AppError("Idempotency response is unavailable", 500);
+      }
+
+      await client.query("COMMIT");
+
+      req.log.info(
+        { userId, idempotencyKey },
+        "Returning cached transaction response",
+      );
+
+      res.setHeader("Idempotency-Replayed", "true");
+
+      return res.status(existing.response_status).json(existing.response_body);
+    }
 
     const walletResult = await client.query(
       `
@@ -189,11 +287,26 @@ router.post("/", async (req, res) => {
       ],
     );
 
+    const responseBody = { data: result.rows[0] };
+
+    await client.query(
+      `
+        UPDATE idempotency_keys
+        SET
+          response_status = $1,
+          response_body = $2
+        WHERE user_id = $3 AND idempotency_key = $4
+      `,
+      [201, responseBody, userId, idempotencyKey],
+    );
+
     await client.query("COMMIT");
 
     req.log.info({ userId }, "Creating transaction successfully");
 
-    res.status(201).json({ data: result.rows[0] });
+    res.setHeader("Idempotency-Replayed", "false");
+
+    res.status(201).json({ data: responseBody });
   } catch (err) {
     await client.query("ROLLBACK").catch((rollbackError: unknown) => {
       req.log.error({ rollbackError }, "Failed to roll back transaction");

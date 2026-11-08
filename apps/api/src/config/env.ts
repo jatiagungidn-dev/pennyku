@@ -1,5 +1,18 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import { resolve } from "path";
+import { fileURLToPath } from "url";
 import { z } from "zod";
+
+const currentDir = fileURLToPath(new URL(".", import.meta.url));
+
+dotenv.config({
+  path: resolve(currentDir, "../../.env"),
+});
+
+if (process.env.NODE_ENV === "test") {
+  dotenv.config({ path: resolve(currentDir, "../../.env.test") });
+  override: true;
+}
 
 const envSchema = z.object({
   NODE_ENV: z
