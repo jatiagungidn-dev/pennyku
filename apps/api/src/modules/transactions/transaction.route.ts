@@ -170,7 +170,7 @@ router.post("/", async (req, res) => {
             response_body = NULL,
             created_at = NOW(),
             expires_at = NOW() + INTERVAL '24 hours'
-        WHERE idempotency_key.expires_at <= NOW()
+        WHERE idempotency_keys.expires_at <= NOW()
         RETURNING id
       `,
       [userId, idempotencyKey, requiredHash],
@@ -180,7 +180,7 @@ router.post("/", async (req, res) => {
       const existingResult = await client.query(
         `
           SELECT
-            require_hash,
+            request_hash,
             response_status,
             response_body
           FROM idempotency_keys
@@ -195,7 +195,7 @@ router.post("/", async (req, res) => {
         throw new AppError("Unable to process idempotency key", 500);
       }
 
-      if (existing.result_hash !== requiredHash) {
+      if (existing.request_hash !== requiredHash) {
         throw new AppError(
           "Idempotency key has already been used with a different request",
           409,
@@ -289,7 +289,7 @@ router.post("/", async (req, res) => {
 
     const responseBody = { data: result.rows[0] };
 
-    await client.query(
+    const idempotencyResult = await client.query(
       `
         UPDATE idempotency_keys
         SET
@@ -306,7 +306,7 @@ router.post("/", async (req, res) => {
 
     res.setHeader("Idempotency-Replayed", "false");
 
-    res.status(201).json({ data: responseBody });
+    res.status(201).json(responseBody);
   } catch (err) {
     await client.query("ROLLBACK").catch((rollbackError: unknown) => {
       req.log.error({ rollbackError }, "Failed to roll back transaction");

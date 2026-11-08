@@ -4,15 +4,12 @@ import { fileURLToPath } from "url";
 import { z } from "zod";
 
 const currentDir = fileURLToPath(new URL(".", import.meta.url));
+const envFile =
+  process.env.NODE_ENV === "test" ? "../../.env.test" : "../../.env";
 
 dotenv.config({
-  path: resolve(currentDir, "../../.env"),
+  path: resolve(currentDir, envFile),
 });
-
-if (process.env.NODE_ENV === "test") {
-  dotenv.config({ path: resolve(currentDir, "../../.env.test") });
-  override: true;
-}
 
 const envSchema = z.object({
   NODE_ENV: z
@@ -20,8 +17,8 @@ const envSchema = z.object({
     .default("development"),
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().trim().min(1),
-  NEON_AUTH_JWKS_URL: z.string().url(),
-  NEON_AUTH_ISSUER: z.string().url(),
+  NEON_AUTH_JWKS_URL: z.string().trim().url(),
+  NEON_AUTH_ISSUER: z.string().trim().url(),
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
 });
 

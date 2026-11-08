@@ -114,4 +114,47 @@ describe("POST /api/transactions idempotency", () => {
     expect(secondResponse.headers["idempotency-replayed"]).toBe("true");
     expect(await countTransaction()).toBe(1);
   });
+
+  it("should return 409 when the same key is used with a different payload", async () => {
+    const firstResponse = await createTransactionRequest("same-key-002");
+    const secondResponse = await createTransactionRequest("same-key-002", {
+      ...transactionPayload,
+      amount: 100000,
+    });
+
+    expect(firstResponse.status).toBe(201);
+    expect(secondResponse.status).toBe(409);
+    expect(await countTransaction()).toBe(1);
+  });
+
+  it("should create separate transactions when different keys are used", async () => {
+    const firstResponse = await createTransactionRequest("different-key-001");
+    const secondResponse = await createTransactionRequest("different-key-002");
+
+    expect(firstResponse.status).toBe(201);
+    expect(secondResponse.status).toBe(201);
+    expect(firstResponse.body.data.id).not.toBe(secondResponse.body.data.id);
+    expect(await countTransaction()).toBe(2);
+  });
+
+  it("should reject requests without an Idempotency_Key header", async () => {
+    const response = await request(app)
+      .post("/api/transactions")
+      .send({ ...transactionPayload, wallet_id: walletId });
+
+    expect(response.status).toBe(400);
+    expect(await countTransaction()).toBe(0);
+  });
+
+  it("should handle simultaneous requests with the same key", async () => {
+    const [firstResponse, secondResponse] = await Promise.all([
+      createTransactionRequest("concurrent-key-001"),
+      createTransactionRequest("concurrent-key-001"),
+    ]);
+
+    expect(firstResponse.status).toBe(201);
+    expect(secondResponse.status).toBe(201);
+    expect(firstResponse.body.data.id).toBe(secondResponse.body.data.id);
+    expect(await countTransaction()).toBe(1);
+  });
 });
