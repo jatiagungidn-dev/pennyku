@@ -84,7 +84,7 @@ describe("GET /api/wallets", () => {
     const response = await request(app).get("/api/wallets");
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ data: [] });
+    expect(response.body).toEqual({ data: [], count: 0 });
   });
 });
 

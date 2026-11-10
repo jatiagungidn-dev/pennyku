@@ -290,6 +290,6 @@ export const transactionRepository = {
       [id, userId],
     );
 
-    return result.rows[0].id;
+    return result.rows[0];
   },
 };
