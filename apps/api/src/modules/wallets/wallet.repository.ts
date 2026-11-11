@@ -1,11 +1,15 @@
 import { pool } from "../../config/db.js";
-import { PoolClient } from "pg";
-
-type WalletType = "cash" | "bank" | "e-wallet" | "other";
+import type { PoolClient } from "pg";
+import type {
+  CreateWalletPayload,
+  UpdateWalletData,
+  Wallet,
+  WalletRepositoryResult,
+} from "../../types/wallet.js";
 
 export const walletRepository = {
-  async getWallets(userId: string) {
-    const result = await pool.query(
+  async getWallets(userId: string): Promise<WalletRepositoryResult<Wallet>> {
+    const result = await pool.query<Wallet>(
       `
         SELECT 
             w.id,
@@ -27,35 +31,43 @@ export const walletRepository = {
             FROM wallets w
             LEFT JOIN transactions t ON t.wallet_id = w.id
             WHERE w.user_id = $1
-            GROUP BY w.id
+            GROUP BY 
+              w.id,
+              w.name,
+              w.type,
+              w.initial_balance,
+              w.created_at,
+              w.updated_at
             ORDER BY w.created_at DESC;
         `,
       [userId],
     );
 
-    return { data: result.rows, count: result.rowCount };
+    return { data: result.rows, count: result.rowCount ?? 0 };
   },
 
   async postWallet(
-    name: string,
-    type: WalletType,
-    initialBalance: number,
     userId: string,
-  ) {
-    const result = await pool.query(
+    data: CreateWalletPayload,
+  ): Promise<Omit<Wallet, "current_balance"> | null> {
+    const result = await pool.query<Omit<Wallet, "current_balance">>(
       `
         INSERT INTO wallets (name, type, initial_balance, user_id)
         VALUES ($1, $2, $3, $4)
         RETURNING id, name, type, initial_balance, created_at, updated_at
     `,
-      [name, type, initialBalance, userId],
+      [data.name, data.type, data.initialBalance, userId],
     );
 
-    return result.rows[0];
+    return result.rows[0] ?? null;
   },
 
-  async findOwnedWallet(walletId: string, userId: string) {
-    const result = await pool.query(
+  async findOwnedWallet(
+    client: PoolClient,
+    walletId: string,
+    userId: string,
+  ): Promise<Pick<Wallet, "id" | "name" | "type"> | null> {
+    const result = await client.query<Pick<Wallet, "id" | "name" | "type">>(
       `
         SELECT id, name, type
         FROM wallets
@@ -72,12 +84,9 @@ export const walletRepository = {
     client: PoolClient,
     walletId: string,
     userId: string,
-    data: {
-      name: string;
-      type: WalletType;
-    },
-  ) {
-    const result = await client.query(
+    data: UpdateWalletData,
+  ): Promise<Omit<Wallet, "current_balance"> | null> {
+    const result = await client.query<Omit<Wallet, "current_balance">>(
       `
         UPDATE wallets
         SET
@@ -99,8 +108,11 @@ export const walletRepository = {
     return result.rows[0] ?? null;
   },
 
-  async deleteWallet(walletId: string, userId: string) {
-    const result = await pool.query(
+  async deleteWallet(
+    walletId: string,
+    userId: string,
+  ): Promise<Pick<Wallet, "id"> | null> {
+    const result = await pool.query<Pick<Wallet, "id">>(
       `
         DELETE FROM wallets
         WHERE id = $1 AND user_id = $2
@@ -109,6 +121,6 @@ export const walletRepository = {
       [walletId, userId],
     );
 
-    return result.rows[0];
+    return result.rows[0] ?? null;
   },
 };

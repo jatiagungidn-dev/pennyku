@@ -1,6 +1,5 @@
 import type { RequestHandler } from "express";
 import { walletService } from "./wallet.service.js";
-import { createWalletSchema } from "./wallet.schema.js";
 import { AppError } from "../../errors/AppError.js";
 import { walletRepository } from "./wallet.repository.js";
 
@@ -21,27 +20,11 @@ export const createWallet: RequestHandler = async (req, res) => {
 
   req.log.debug({ userId }, "Creating wallet...");
 
-  const parsed = createWalletSchema.safeParse(req.body);
+  const wallet = await walletService.create(userId, req.body);
 
-  if (!parsed.success) {
-    req.log.warn(
-      { userId, detail: parsed.error.issues },
-      "Creating wallet failed: Invalid wallet data",
-    );
-
-    throw new AppError("Invalid wallet data", 400, true, {
-      detail: parsed.error.flatten().fieldErrors,
-    });
+  if (!wallet) {
+    req.log.warn({ userId }, "Creating wallet failed: Invalid wallet data");
   }
-
-  const { name, type, initial_balance } = parsed.data;
-
-  const wallet = await walletService.create(
-    name,
-    type,
-    initial_balance,
-    userId,
-  );
 
   req.log.info({ userId }, "Wallet created successfully");
 
@@ -82,16 +65,16 @@ export const walletDelete: RequestHandler = async (req, res) => {
 
   const wallet = await walletRepository.deleteWallet(id, userId);
 
-  //   if (wallet.count === 0) {
-  //     req.log.warn(
-  //       { userId, walletId: id },
-  //       "Deleting wallet failed: Wallet not found",
-  //     );
+  if (!wallet) {
+    req.log.warn(
+      { userId, walletId: id },
+      "Deleting wallet failed: Wallet not found",
+    );
 
-  //     throw new AppError("Wallet not found", 404);
-  //   }
+    throw new AppError("Wallet not found", 404);
+  }
 
   req.log.info({ userId, walletId: id }, "Wallet deleted successfully");
 
-  res.status(200).json(wallet);
+  res.status(200).json({ data: wallet.id });
 };
