@@ -7,3 +7,5 @@ vendor/
 storage/*.key
 .DS_Store
 repomix-output.xml
+AGENTS.md
+AGENT.md
