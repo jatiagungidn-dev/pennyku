@@ -10,7 +10,7 @@ const app = createApp(testAuth);
 const transactionPayload = {
   type: "expense",
   amount: 50000,
-  describe: "Idempotency test",
+  description: "Idempotency test",
 };
 
 let walletId: string;
@@ -51,7 +51,7 @@ beforeAll(async () => {
     [TEST_USER_ID],
   );
 
-  if (result.rowCount === 0) {
+  if (!result.rowCount) {
     throw new Error("Test user doesn't exist");
   }
 });

@@ -75,7 +75,11 @@ export const walletService = {
 
       return result;
     } catch (err) {
-      await client.query("ROLLBACK");
+      try {
+        await client.query("ROLLBACK");
+      } catch (rollbackError) {
+        console.error("Failed to rollback wallet update", rollbackError);
+      }
 
       throw err;
     } finally {
