@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { authClient } from "./lib/auth-client";
 import {
   getTransactions,
-  TransactionSummary,
+  type TransactionSummary,
   type Transaction,
   type TransactionPagination,
 } from "./services/transaction.service";
