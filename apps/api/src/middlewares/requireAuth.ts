@@ -19,14 +19,14 @@ export async function requireAuth(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  const auhtorization = req.headers.authorization;
+  const authorization = req.headers.authorization;
 
-  if (!auhtorization?.startsWith("Bearer ")) {
+  if (!authorization?.startsWith("Bearer ")) {
     res.status(401).json({ error: "Authentication required" });
     return;
   }
 
-  const token = auhtorization.slice("Bearer".length).trim();
+  const token = authorization.slice("Bearer".length).trim();
 
   if (!token) {
     res.status(401).json({ error: "Authentication required" });

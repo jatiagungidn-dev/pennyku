@@ -9,3 +9,5 @@ storage/*.key
 repomix-output.xml
 AGENTS.md
 AGENT.md
+.vercel
+.env*

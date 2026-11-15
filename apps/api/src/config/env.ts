@@ -7,9 +7,10 @@ const currentDir = fileURLToPath(new URL(".", import.meta.url));
 const envFile =
   process.env.NODE_ENV === "test" ? "../../.env.test" : "../../.env";
 
-dotenv.config({
-  path: resolve(currentDir, envFile),
-});
+if (process.env.NODE_ENV !== "production")
+  dotenv.config({
+    path: resolve(currentDir, envFile),
+  });
 
 const envSchema = z.object({
   NODE_ENV: z
