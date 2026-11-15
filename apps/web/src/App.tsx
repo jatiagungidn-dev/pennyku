@@ -88,8 +88,12 @@ export default function App() {
 
   async function handleTransactionSaved() {
     try {
-      const transactionData = await getTransactions(1, pagination.limit);
+      const [walletData, transactionData] = await Promise.all([
+        getWallets(),
+        getTransactions(1, pagination.limit),
+      ]);
 
+      setWallets(walletData);
       setTransactions(transactionData.data);
       setPagination(transactionData.pagination);
       setSummary(transactionData.summary);
