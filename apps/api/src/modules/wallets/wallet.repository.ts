@@ -86,14 +86,31 @@ export const walletRepository = {
     userId: string,
     data: UpdateWalletData,
   ): Promise<Omit<Wallet, "current_balance"> | null> {
+    const fields: string[] = [];
+    const values: string[] = [];
+
+    if (data.name !== undefined) {
+      fields.push(`name = $${values.length + 1}`);
+      values.push(data.name);
+    }
+    if (data.type !== undefined) {
+      fields.push(`type = $${values.length + 1}`);
+      values.push(data.type);
+    }
+
+    if (fields.length === 0) {
+      return null;
+    }
+
+    fields.push("updated_at = NOW()");
+
+    values.push(walletId, userId);
+
     const result = await client.query<Omit<Wallet, "current_balance">>(
       `
         UPDATE wallets
-        SET
-          name = $1,
-          type = $2,
-          updated_at = NOW()
-        WHERE id = $3 AND user_id = $4
+        SET ${fields.join(", ")}
+        WHERE id = $${values.length - 1} AND user_id = $${values.length}
         RETURNING
           id,
           name,
@@ -102,7 +119,7 @@ export const walletRepository = {
           created_at,
           updated_at
     `,
-      [data.name, data.type, walletId, userId],
+      values,
     );
 
     return result.rows[0] ?? null;

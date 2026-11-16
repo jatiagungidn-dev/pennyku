@@ -157,4 +157,32 @@ describe("POST /api/transactions idempotency", () => {
     expect(firstResponse.body.data.id).toBe(secondResponse.body.data.id);
     expect(await countTransaction()).toBe(1);
   });
+
+  it("should return transaction created successfully", async () => {
+    const response = await createTransactionRequest("key-001");
+
+    expect(response.status).toBe(201);
+    expect(response.body.data.wallet_id).toBe(walletId);
+    expect(await countTransaction()).toBe(1);
+  });
+
+  it("should reject insufficient transaction amount with wallet balance", async () => {
+    const response = await createTransactionRequest("key-001", {
+      ...transactionPayload,
+      amount: 200000,
+    });
+
+    expect(response.status).toBe(409);
+    expect(await countTransaction()).toBe(0);
+  });
+
+  it("should allow expense equal to wallet balance", async () => {
+    const response = await createTransactionRequest("exac-balance-001", {
+      ...transactionPayload,
+      amount: 100000,
+    });
+
+    expect(response.status).toBe(201);
+    expect(await countTransaction()).toBe(1);
+  });
 });

@@ -228,6 +228,75 @@ export const transactionRepository = {
     return result.rows[0] ?? null;
   },
 
+  async hasSufficientBalance(
+    client: PoolClient,
+    walletId: string,
+    amount: number,
+  ): Promise<boolean> {
+    const result = await client.query(
+      `
+      SELECT (
+        w.initial_balance + COALESCE(
+          SUM(
+            CASE
+              WHEN t.type = 'income' THEN t.amount
+              WHEN t.type = 'expense' THEN -t.amount
+              ELSE 0
+            END
+          ),
+          0
+        )
+      ) >= $2::numeric AS sufficient
+      FROM wallets w
+      LEFT JOIN transactions t ON t.wallet_id = w.id
+      WHERE w.id = $1
+      GROUP BY w.id, w.initial_balance
+    `,
+      [walletId, amount],
+    );
+
+    return result.rows[0]?.sufficient ?? false;
+  },
+
+  async hasNonNegativeBalanceAfterUpdate(
+    client: PoolClient,
+    walletId: string,
+    transactionId: string,
+    type: string | null,
+    amount: number,
+  ): Promise<boolean> {
+    const result = await client.query(
+      `
+      SELECT (
+        w.initial_balance + COALESCE(
+          SUM(
+            CASE
+              WHEN t.type = 'income' THEN t.amount
+              WHEN t.type = 'expense' THEN -t.amount
+              ELSE 0
+            END
+          ),
+          0
+        ) +
+        CASE
+          WHEN $3 = 'income' THEN $4::numeric
+          WHEN $3 = 'expense' THEN -$4::numeric
+          ELSE 0
+        END
+      ) >= 0 AS sufficient
+      FROM wallets w
+      LEFT JOIN transactions t
+        ON t.wallet_id = w.id
+        AND t.id <> $2
+      WHERE w.id = $1
+      GROUP BY w.id, w.initial_balance
+    `,
+      [walletId, transactionId, type, amount],
+    );
+
+    return result.rows[0]?.sufficient ?? false;
+  },
+
   async update(
     client: PoolClient,
     transactionId: string,

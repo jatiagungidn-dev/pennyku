@@ -27,15 +27,27 @@ export const getTransaction: RequestHandler = async (req, res) => {
 export const createTransaction: RequestHandler = async (req, res) => {
   const userId = req.auth!.userId;
 
+  req.log.debug({ userId }, "Creating transaction...");
+
   const idempotencyKey = req.get("Idempotency-Key")?.trim();
 
   if (!idempotencyKey || idempotencyKey.length > 255) {
+    req.log.warn(
+      { userId },
+      "Creating transaction failed: A valid Idempotency-Key header is required",
+    );
+
     throw new AppError("A valid Idempotency-Key header is required", 400);
   }
 
   const parsed = createTransactionSchema.safeParse(req.body);
 
   if (!parsed.success) {
+    req.log.warn(
+      { userId, error: parsed.error.issues },
+      "Creating transaction failed: Invalid transaction data",
+    );
+
     throw new AppError("Invalid transaction data", 400, true, {
       detail: parsed.error.issues,
     });
@@ -47,7 +59,17 @@ export const createTransaction: RequestHandler = async (req, res) => {
     parsed.data,
   );
 
+  req.log.info(
+    { userId, data: result.body, idempotencyKey: idempotencyKey },
+    "Transaction created successfully",
+  );
+
   res.setHeader("Idempotency-Replayed", String(result.replayed));
+
+  req.log.info(
+    { userId, idempotencyKey: idempotencyKey },
+    "Idempotency-Replayed",
+  );
 
   return res.status(result.status).json(result.body);
 };
@@ -65,7 +87,7 @@ export const updateTransaction: RequestHandler = async (req, res) => {
   const transaction = await transactionService.update(userId, id, req.body);
 
   req.log.info(
-    { userId, transactionId: id },
+    { userId, transactionId: id, data: transaction },
     "Update transaction successfully",
   );
 

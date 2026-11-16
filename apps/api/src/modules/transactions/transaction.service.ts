@@ -121,6 +121,18 @@ export const transactionService = {
         throw new AppError("Wallet not found", 404);
       }
 
+      if (data.type === "expense") {
+        const sufficient = await transactionRepository.hasSufficientBalance(
+          client,
+          data.wallet_id,
+          data.amount,
+        );
+
+        if (!sufficient) {
+          throw new AppError("Insufficient wallet balance", 409);
+        }
+      }
+
       if (data.category_id) {
         const category = await transactionRepository.findAccessibleCategory(
           client,
@@ -245,14 +257,49 @@ export const transactionService = {
 
       const normalizedCategoryId = category_id ?? null;
 
-      const wallet = await transactionRepository.findOwnedWallet(
-        client,
-        wallet_id,
-        userId,
-      );
+      const walletIds = [...new Set([existing.wallet_id, wallet_id])].sort();
 
-      if (!wallet) {
-        throw new AppError("Wallet not found", 404);
+      for (const id of walletIds) {
+        const wallet = await transactionRepository.findOwnedWallet(
+          client,
+          id,
+          userId,
+        );
+
+        if (!wallet) {
+          throw new AppError("Wallet not found", 404);
+        }
+      }
+
+      if (existing.wallet_id !== wallet_id) {
+        const sourceBalanceValid =
+          await transactionRepository.hasNonNegativeBalanceAfterUpdate(
+            client,
+            existing.wallet_id,
+            transactionId,
+            null,
+            0,
+          );
+
+        if (!sourceBalanceValid) {
+          throw new AppError(
+            "Updating this transaction would make the source balance negative",
+            409,
+          );
+        }
+      }
+
+      const targetBalanceValid =
+        await transactionRepository.hasNonNegativeBalanceAfterUpdate(
+          client,
+          wallet_id,
+          transactionId,
+          type,
+          amount,
+        );
+
+      if (!targetBalanceValid) {
+        throw new AppError("Insufficient wallet balance", 409);
       }
 
       if (normalizedCategoryId) {

@@ -5,7 +5,6 @@ import { pool } from "../../config/db.js";
 import type {
   CreateWalletPayload,
   UpdateWalletData,
-  UpdateWalletPayload,
   Wallet,
 } from "../../types/wallet.js";
 
@@ -28,7 +27,13 @@ export const walletService = {
       initialBalance: data.initial_balance,
     };
 
-    return await walletRepository.postWallet(userId, payload);
+    const wallet = await walletRepository.postWallet(userId, payload);
+
+    if (!wallet) {
+      throw new AppError("Failed to create wallet", 500);
+    }
+
+    return wallet;
   },
 
   async update(
@@ -43,6 +48,10 @@ export const walletService = {
     }
 
     const updates = parsed.data;
+
+    if (updates.name === undefined && updates.type === undefined) {
+      throw new AppError("At least one field must be provided", 400);
+    }
 
     const client = await pool.connect();
 
@@ -72,6 +81,10 @@ export const walletService = {
       );
 
       await client.query("COMMIT");
+
+      if (!result) {
+        throw new AppError("Failed to update wallet", 500);
+      }
 
       return result;
     } catch (err) {
