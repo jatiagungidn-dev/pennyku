@@ -1,176 +1,279 @@
 # PennyKu
 
-PennyKu adalah aplikasi **personal finance tracker** untuk membantu pengguna mengelola wallet serta mencatat pemasukan (_income_) dan pengeluaran (_expenses_) dalam satu tempat.
+**PennyKu** adalah aplikasi personal finance management untuk membantu pengguna mengelola wallet serta mencatat pemasukan (_income_) dan pengeluaran (_expense_) dalam satu tempat.
 
-PennyKu dibangun menggunakan **React** dan **TypeScript** pada sisi frontend, serta **Express** dan **TypeScript** pada sisi backend. Data disimpan menggunakan **PostgreSQL**, sementara autentikasi ditangani oleh **Neon Auth**.
+Project ini dibangun menggunakan **Node.js, Express, TypeScript, dan PostgreSQL** pada sisi backend, serta **React dan TypeScript** pada sisi frontend. Authentication ditangani menggunakan **Neon Auth**.
 
-## Repository Structure
+## Preview Aplikasi
 
-Repository PennyKu menggunakan pendekatan monorepo dengan npm workspaces.
+Bagian ini menampilkan tampilan PennyKu untuk memberikan gambaran mengenai fitur dan pengalaman penggunaan aplikasi.
+
+<!-- Tambahkan screenshot aplikasi ke folder docs/screenshots/ -->
+
+### Dashboard
+
+![PennyKu Dashboard](docs/screenshots/dashboard.png)
+
+### Wallet Management
+
+![PennyKu Wallet Management](docs/screenshots/wallet-management.png)
+
+### Transaction Management
+
+![PennyKu Transaction Management](docs/screenshots/transaction-management.png)
+
+### Transaction History
+
+![PennyKu Transaction History](docs/screenshots/transaction-history.png)
+
+## Fitur Utama
+
+- **Authentication** - Autentikasi pengguna menggunakan Neon Auth dan token verification pada backend.
+- **Wallet Management** - Membuat, melihat, memperbarui, dan menghapus wallet.
+- **Transaction Management** - Mencatat, melihat, memperbarui, dan menghapus transaksi pemasukan maupun pengeluaran.
+- **Category Management** - Menggunakan default categories dan membuat custom categories milik pengguna.
+- **Transaction Summary** - Menampilkan ringkasan total income, expense, dan jumlah transaksi.
+- **Pagination** - Mengambil daftar transaksi menggunakan page-based pagination.
+- **Idempotent Transaction Creation** - Mencegah pembuatan transaksi duplikat ketika request dikirim ulang menggunakan idempotency key yang sama.
+- **Database Transactions** - Menggunakan PostgreSQL transactions untuk menjaga konsistensi operasi yang melibatkan beberapa perubahan database.
+
+## Tech Stack
+
+| Area                 | Teknologi            |
+| -------------------- | -------------------- |
+| Backend Runtime      | Node.js              |
+| Backend Framework    | Express              |
+| Programming Language | TypeScript           |
+| Database             | PostgreSQL           |
+| Authentication       | Neon Auth            |
+| Request Validation   | Zod                  |
+| Database Client      | node-postgres (`pg`) |
+| Logging              | Pino                 |
+| Testing              | Vitest, Supertest    |
+| Frontend             | React, Vite          |
+| Monorepo             | npm Workspaces       |
+
+## Arsitektur Backend
+
+PennyKu menggunakan modular architecture dengan pemisahan tanggung jawab antara HTTP handling, business logic, dan database access.
 
 ```text
-pennyku/
-├── apps/
-│   ├── web/                  # React + Vite frontend
-│   └── api/                  # Express backend
-│       └── database/
-│           └── migrations/   # SQL migrations dan default category seed data
-└── ...
+Client
+  |
+  v
+Express Routes & Middleware
+  |
+  v
+Controllers
+  |
+  v
+Services
+  |
+  v
+Repositories
+  |
+  v
+PostgreSQL
 ```
 
-Penjelasan setiap bagian:
+### Struktur Backend
 
-- `apps/web` — React/Vite client yang mencakup authentication UI, dashboard, wallet management, dan transaction management.
-- `apps/api` — Express API yang menangani authentication middleware, request validation, dan interaksi dengan PostgreSQL.
-- `apps/api/database/migrations` — Kumpulan SQL migrations yang digunakan untuk mengelola database schema dan default category seed data.
+```text
+apps/
+└── api/
+    ├── database/
+    │   └── migrations/
+    └── src/
+        ├── config/
+        ├── errors/
+        ├── middlewares/
+        ├── modules/
+        │   ├── wallets/
+        │   ├── categories/
+        │   └── transactions/
+        ├── test/
+        └── types/
+```
 
-## Requirements
+Setiap module memiliki tanggung jawab masing-masing dan menggunakan routes, controllers, services, repositories, serta validation schemas.
 
-Sebelum menjalankan PennyKu, pastikan environment sudah memiliki:
+## Persiapan Project
 
-- **Node.js** dan **npm**. Project ini menggunakan npm workspaces.
-- **PostgreSQL database** dengan konfigurasi schema yang sesuai dengan migrations di `apps/api/database/migrations`.
-- **Neon Auth configuration** untuk frontend dan backend.
+### Prasyarat
 
-## Environment Configuration
+Pastikan environment sudah memiliki:
 
-Buat file environment sesuai kebutuhan masing-masing workspace. Jangan pernah memasukkan credentials asli ke dalam repository.
+- Node.js
+- npm
+- PostgreSQL database
+- Neon Auth configuration
 
-### Backend API
+### 1. Clone Repository
 
-Salin `apps/api/.env.example` menjadi `apps/api/.env`, kemudian isi konfigurasi berikut:
+```bash
+git clone https://github.com/jatiagungidn-dev/pennyku
+cd pennyku
+```
 
-| Variable             | Description                                                               |
-| -------------------- | ------------------------------------------------------------------------- |
-| `DATABASE_URL`       | PostgreSQL connection string.                                             |
-| `NEON_AUTH_JWKS_URL` | JSON Web Key Set (JWKS) URL yang digunakan untuk memverifikasi API token. |
-| `NEON_AUTH_ISSUER`   | Expected issuer dari authentication token.                                |
-| `PORT`               | Port yang digunakan API. Default: `3000`.                                 |
-| `NODE_ENV`           | Runtime environment. Default: `development`.                              |
+### 2. Install Dependencies
 
-### Frontend Web
+Jalankan perintah berikut dari root repository:
 
-Buat file `apps/web/.env`, kemudian konfigurasi variable berikut:
-
-| Variable             | Description                                                  |
-| -------------------- | ------------------------------------------------------------ |
-| `VITE_API_URL`       | Base URL dari backend API, misalnya `http://localhost:3000`. |
-| `VITE_NEON_AUTH_URL` | Neon Auth URL yang digunakan oleh frontend.                  |
-
-## Installation
-
-Clone repository, lalu jalankan perintah berikut dari repository root untuk menginstal seluruh dependencies:
-
-```sh
+```bash
 npm install
 ```
 
-## Database Migration
+### 3. Konfigurasi Environment Variables
 
-Setelah backend environment dikonfigurasi, jalankan database migrations:
+Buat file `apps/api/.env` untuk backend:
 
-```sh
+```env
+DATABASE_URL=your_postgresql_connection_string
+NEON_AUTH_JWKS_URL=your_neon_auth_jwks_url
+NEON_AUTH_ISSUER=your_neon_auth_issuer
+PORT=3000
+NODE_ENV=development
+```
+
+Buat file `apps/web/.env` untuk frontend:
+
+```env
+VITE_API_URL=http://localhost:3000
+VITE_NEON_AUTH_URL=your_neon_auth_url
+```
+
+Jangan pernah memasukkan credentials atau secrets asli ke dalam repository.
+
+### 4. Jalankan Database Migrations
+
+```bash
 npm run migrate
 ```
 
-Perintah ini digunakan untuk menerapkan database schema dan migration yang tersedia.
+Perintah ini digunakan untuk menerapkan database migrations yang tersedia pada API workspace.
 
-## Running the Application
+### 5. Jalankan Aplikasi
 
-Jalankan kedua development servers dari repository root:
+Untuk menjalankan frontend dan backend secara bersamaan:
 
-```sh
+```bash
 npm run dev
 ```
 
-Secara default, backend API berjalan pada port `3000`, sedangkan Vite akan menampilkan URL frontend ketika development server dimulai.
+Atau jalankan masing-masing workspace secara terpisah:
 
-Jika ingin menjalankan masing-masing workspace secara terpisah, gunakan:
-
-**Backend API**
-
-```sh
+```bash
 npm run dev:api
-```
-
-**Frontend Web**
-
-```sh
 npm run dev:web
 ```
 
-## Available Scripts
-
-Berikut beberapa perintah yang tersedia untuk memeriksa kualitas dan kondisi project.
-
-### Root Scripts
-
-Jalankan dari repository root:
-
-| Command             | Description                                           |
-| ------------------- | ----------------------------------------------------- |
-| `npm run typecheck` | Memeriksa TypeScript types pada project.              |
-| `npm test`          | Menjalankan API test suite menggunakan Vitest.        |
-| `npm run migrate`   | Menjalankan database migrations.                      |
-| `npm run dev`       | Menjalankan frontend dan backend development servers. |
-
-### Frontend Scripts
-
-Jalankan dari direktori `apps/web`:
-
-| Command         | Description                                |
-| --------------- | ------------------------------------------ |
-| `npm run build` | Melakukan production build untuk frontend. |
-| `npm run lint`  | Menjalankan linting pada frontend code.    |
-
-## Testing
-
-Backend API menggunakan **Vitest** sebagai testing framework.
-
-Untuk menjalankan seluruh API test suite, gunakan:
-
-```sh
-npm test
-```
-
-Beberapa integration tests membutuhkan koneksi ke test database dan test user yang sudah dikonfigurasi.
-
-Buat dan konfigurasi file `.env.test` sesuai kebutuhan yang dijelaskan di:
-
-```text
-apps/api/src/test/setup-env.ts
-```
-
-Pastikan test environment menggunakan database terpisah dari development maupun production database.
-
 ## API Overview
 
-PennyKu menyediakan beberapa API endpoints untuk mengelola data aplikasi.
+PennyKu menyediakan beberapa API resources untuk mengelola data aplikasi.
 
-| Endpoint            | Description              | Authentication |
-| ------------------- | ------------------------ | -------------- |
-| `GET /`             | Public API health check. | Not required   |
-| `/api/wallets`      | Wallet management.       | Required       |
-| `/api/categories`   | Category management.     | Required       |
-| `/api/transactions` | Transaction management.  | Required       |
+| Endpoint            | Operasi                                           |
+| ------------------- | ------------------------------------------------- |
+| `/api/wallets`      | Retrieve, create, update, dan delete wallets      |
+| `/api/categories`   | Retrieve dan create categories                    |
+| `/api/transactions` | Retrieve, create, update, dan delete transactions |
 
-Wallet, category, dan transaction endpoints memerlukan **Neon Auth Bearer Token**.
+Seluruh endpoint `/api` memerlukan authentication menggunakan Neon Auth Bearer Token.
 
-API menerapkan beberapa aturan akses data:
+### Authentication
 
-- Setiap wallet hanya dapat diakses oleh pemiliknya.
-- Setiap transaction terhubung dengan wallet.
-- Default categories dapat digunakan bersama oleh pengguna.
-- Custom categories dapat dimiliki secara spesifik oleh masing-masing pengguna.
-
-## Authentication
-
-PennyKu menggunakan **Neon Auth** untuk menangani authentication.
-
-Frontend menggunakan Neon Auth untuk proses autentikasi pengguna, sedangkan backend memverifikasi Bearer Token menggunakan konfigurasi JWKS dan expected issuer.
-
-Endpoint yang membutuhkan autentikasi harus menyertakan token pada HTTP request header:
+Sertakan access token pada HTTP request header:
 
 ```http
 Authorization: Bearer <access_token>
 ```
+
+Backend melakukan token verification menggunakan JWKS dan expected issuer yang dikonfigurasi melalui environment variables.
+
+### Transaction Idempotency
+
+Pembuatan transaksi memerlukan `Idempotency-Key` pada request header.
+
+Contoh request:
+
+```http
+POST /api/transactions
+Authorization: Bearer <access_token>
+Idempotency-Key: <unique-request-key>
+Content-Type: application/json
+```
+
+Backend menggunakan idempotency key dan request payload hash untuk menangani request yang dikirim ulang.
+
+- Request ulang dengan key dan payload yang sama dapat menggunakan response yang sudah tersimpan.
+- Penggunaan key yang sama dengan payload berbeda menghasilkan conflict response.
+- Idempotency records memiliki masa berlaku selama 24 jam.
+
+## Testing
+
+Backend menggunakan **Vitest** dan **Supertest** untuk menjalankan API tests.
+
+Jalankan seluruh API test suite dari root repository:
+
+```bash
+npm test
+```
+
+Untuk memeriksa TypeScript pada kedua workspace:
+
+```bash
+npm run typecheck
+```
+
+Beberapa integration tests memerlukan test database dan test user yang sudah dikonfigurasi.
+
+## Available Scripts
+
+### Root Repository
+
+| Command             | Deskripsi                                 |
+| ------------------- | ----------------------------------------- |
+| `npm run dev`       | Menjalankan frontend dan backend          |
+| `npm run dev:api`   | Menjalankan backend development server    |
+| `npm run dev:web`   | Menjalankan frontend development server   |
+| `npm run typecheck` | Memeriksa TypeScript pada kedua workspace |
+| `npm test`          | Menjalankan backend test suite            |
+| `npm run migrate`   | Menjalankan database migrations           |
+
+### API Workspace
+
+Jalankan dari direktori `apps/api`:
+
+| Command             | Deskripsi                       |
+| ------------------- | ------------------------------- |
+| `npm run build`     | Compile backend                 |
+| `npm run start`     | Menjalankan compiled backend    |
+| `npm run typecheck` | Memeriksa TypeScript backend    |
+| `npm run test`      | Menjalankan backend tests       |
+| `npm run migrate`   | Menjalankan database migrations |
+
+### Web Workspace
+
+Jalankan dari direktori `apps/web`:
+
+| Command             | Deskripsi                         |
+| ------------------- | --------------------------------- |
+| `npm run build`     | Membuat production build frontend |
+| `npm run lint`      | Menjalankan frontend linting      |
+| `npm run typecheck` | Memeriksa TypeScript frontend     |
+
+## Tujuan Pengembangan
+
+PennyKu juga menjadi project praktik untuk mempelajari dan menerapkan beberapa konsep backend engineering, seperti:
+
+- REST API design
+- Authentication dan authorization
+- Relational database design
+- SQL queries dan data aggregation
+- Database transactions dan concurrency control
+- Idempotent request handling
+- API integration testing
+- Database migrations
+
+---
+
+**Dibangun menggunakan Node.js, Express, TypeScript, dan PostgreSQL.**
