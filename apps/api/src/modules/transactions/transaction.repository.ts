@@ -228,6 +228,24 @@ export const transactionRepository = {
     return result.rows[0] ?? null;
   },
 
+  async findOwnedTransactionWallet(
+    client: PoolClient,
+    transactionId: string,
+    userId: string,
+  ) {
+    const result = await client.query(
+      `
+      SELECT t.wallet_id
+      FROM transactions t
+      JOIN wallets w ON w.id = t.wallet_id
+      WHERE t.id = $1 AND w.user_id = $2
+    `,
+      [transactionId, userId],
+    );
+
+    return result.rows[0] ?? null;
+  },
+
   async hasSufficientBalance(
     client: PoolClient,
     walletId: string,
@@ -346,8 +364,8 @@ export const transactionRepository = {
     return result.rows[0];
   },
 
-  async deleteTransaction(userId: string, id: string) {
-    const result = await pool.query(
+  async deleteTransaction(client: PoolClient, userId: string, id: string) {
+    const result = await client.query(
       `
       DELETE FROM transactions t
       USING wallets w

@@ -10,6 +10,7 @@ import {
 import { getCategories, type Category } from "../services/category.service";
 import type { Wallet } from "../services/wallet.service";
 import { today } from "../lib/format";
+import { getApiErrorMessage } from "../lib/api";
 
 type TransactionFormProps = {
   wallets: Wallet[];
@@ -159,13 +160,7 @@ export default function TransactionForm({
         setTransactionDate(today());
       }
     } catch (err) {
-      onError(
-        err instanceof Error
-          ? err.message
-          : isEditing
-            ? "Gagal memperbarui transaksi."
-            : "Gagal menyimpan transaksi.",
-      );
+      onError(getApiErrorMessage(err));
     } finally {
       setSaving(false);
     }

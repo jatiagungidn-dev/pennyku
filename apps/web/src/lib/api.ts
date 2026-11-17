@@ -30,6 +30,10 @@ export function getApiErrorMessage(error: unknown): string {
     const message = error.response?.data?.error;
 
     if (typeof message === "string") {
+      if (message === "Insufficient wallet balance") {
+        return "Saldo wallet tidak mencukupi untuk transaksi ini.";
+      }
+
       return message;
     }
 

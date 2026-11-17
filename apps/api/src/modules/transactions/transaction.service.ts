@@ -208,6 +208,36 @@ export const transactionService = {
     try {
       await client.query("BEGIN");
 
+      // Read the current wallet without locking the transaction first. Wallet
+      // rows must be locked before transaction rows so edits serialize with
+      // transaction creation's wallet-first balance check.
+      const walletSnapshot =
+        await transactionRepository.findOwnedTransactionWallet(
+          client,
+          transactionId,
+          userId,
+        );
+
+      if (!walletSnapshot) {
+        throw new AppError("Transaction not found", 404);
+      }
+
+      const targetWalletId = updates.wallet_id ?? walletSnapshot.wallet_id;
+      const walletIds =
+        [...new Set([walletSnapshot.wallet_id, targetWalletId])].sort();
+
+      for (const id of walletIds) {
+        const wallet = await transactionRepository.findOwnedWallet(
+          client,
+          id,
+          userId,
+        );
+
+        if (!wallet) {
+          throw new AppError("Wallet not found", 404);
+        }
+      }
+
       const existing = await transactionRepository.findOwnedTransaction(
         client,
         transactionId,
@@ -216,6 +246,15 @@ export const transactionService = {
 
       if (!existing) {
         throw new AppError("Transaction not found", 404);
+      }
+
+      // Another edit may have moved this transaction while we waited for the
+      // wallet lock. Retry from a fresh read to acquire the correct lock set.
+      if (existing.wallet_id !== walletSnapshot.wallet_id) {
+        throw new AppError(
+          "Transaction changed while being updated; please retry",
+          409,
+        );
       }
 
       const mergedData = {
@@ -256,20 +295,6 @@ export const transactionService = {
       } = validated.data;
 
       const normalizedCategoryId = category_id ?? null;
-
-      const walletIds = [...new Set([existing.wallet_id, wallet_id])].sort();
-
-      for (const id of walletIds) {
-        const wallet = await transactionRepository.findOwnedWallet(
-          client,
-          id,
-          userId,
-        );
-
-        if (!wallet) {
-          throw new AppError("Wallet not found", 404);
-        }
-      }
 
       if (existing.wallet_id !== wallet_id) {
         const sourceBalanceValid =
@@ -350,15 +375,87 @@ export const transactionService = {
       throw new AppError("Invalid transaction ID", 400);
     }
 
-    const transaction = await transactionRepository.deleteTransaction(
-      userId,
-      transactionId,
-    );
+    const client = await pool.connect();
 
-    if (!transaction) {
-      throw new AppError("Transaction not found", 404);
+    try {
+      await client.query("BEGIN");
+
+      const walletSnapshot =
+        await transactionRepository.findOwnedTransactionWallet(
+          client,
+          transactionId,
+          userId,
+        );
+
+      if (!walletSnapshot) {
+        throw new AppError("Transaction not found", 404);
+      }
+
+      const wallet = await transactionRepository.findOwnedWallet(
+        client,
+        walletSnapshot.wallet_id,
+        userId,
+      );
+
+      if (!wallet) {
+        throw new AppError("Wallet not found", 404);
+      }
+
+      const existing = await transactionRepository.findOwnedTransaction(
+        client,
+        transactionId,
+        userId,
+      );
+
+      if (!existing) {
+        throw new AppError("Transaction not found", 404);
+      }
+
+      if (existing.wallet_id !== walletSnapshot.wallet_id) {
+        throw new AppError(
+          "Transaction changed while being deleted; please retry",
+          409,
+        );
+      }
+
+      if (existing.type === "income") {
+        const balanceValid =
+          await transactionRepository.hasNonNegativeBalanceAfterUpdate(
+            client,
+            existing.wallet_id,
+            transactionId,
+            null,
+            0,
+          );
+
+        if (!balanceValid) {
+          throw new AppError(
+            "Deleting this income would make the wallet balance negative",
+            409,
+          );
+        }
+      }
+
+      const transaction = await transactionRepository.deleteTransaction(
+        client,
+        userId,
+        transactionId,
+      );
+
+      if (!transaction) {
+        throw new AppError("Transaction not found", 404);
+      }
+
+      await client.query("COMMIT");
+      return transaction;
+    } catch (err) {
+      await client.query("ROLLBACK").catch((rollbackError: unknown) => {
+        console.error("Rollback failed:", rollbackError);
+      });
+
+      throw err;
+    } finally {
+      client.release();
     }
-
-    return transaction;
   },
 };
