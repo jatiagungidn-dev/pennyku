@@ -10,6 +10,14 @@ const app = createApp(testAuth);
 async function cleanUpTestData() {
   await pool.query(
     `
+    DELETE FROM idempotency_keys
+    WHERE user_id = $1
+  `,
+    [TEST_USER_ID],
+  );
+
+  await pool.query(
+    `
     DELETE FROM transactions
     WHERE wallet_id IN (
       SELECT id
@@ -27,6 +35,31 @@ async function cleanUpTestData() {
   `,
     [TEST_USER_ID],
   );
+}
+
+async function createWallet() {
+  const response = await request(app).post("/api/wallets").send(providedWallet);
+
+  expect(response.status).toBe(201);
+
+  return response.body.data.id as string;
+}
+
+async function createTransaction(
+  walletId: string,
+  type: "income" | "expense",
+  amount: number,
+  idempotencyKey: string,
+) {
+  return request(app)
+    .post("/api/transactions")
+    .set("Idempotency-Key", idempotencyKey)
+    .send({
+      wallet_id: walletId,
+      type,
+      amount,
+      description: "Wallet balance test",
+    });
 }
 
 beforeAll(async () => {
@@ -86,6 +119,50 @@ describe("GET /api/wallets", () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ data: [], count: 0 });
   });
+
+  it("should return wallet belonging to the user", async () => {
+    await createWallet();
+
+    const response = await request(app).get("/api/wallets");
+
+    expect(response.status).toBe(200);
+    expect(response.body.count).toBe(1);
+    expect(response.body.data).toHaveLength(1);
+
+    expect(response.body.data[0]).toMatchObject({
+      name: "Test Wallet",
+      type: "cash",
+      initial_balance: "10000.00",
+      current_balance: "10000.00",
+    });
+  });
+
+  it("should calculate current balance from income and expense transactions", async () => {
+    const walletId = await createWallet();
+
+    const incomeResponse = await createTransaction(
+      walletId,
+      "income",
+      5000,
+      "wallet-income-001",
+    );
+
+    const expenseResponse = await createTransaction(
+      walletId,
+      "expense",
+      2000,
+      "wallet-expense-001",
+    );
+
+    expect(incomeResponse.status).toBe(201);
+    expect(expenseResponse.status).toBe(201);
+
+    const response = await request(app).get("/api/wallets");
+
+    expect(response.status).toBe(200);
+    expect(response.body.data[0].initial_balance).toBe("10000.00");
+    expect(response.body.data[0].current_balance).toBe("13000.00");
+  });
 });
 
 describe("POST /api/wallets", () => {
@@ -103,6 +180,36 @@ describe("POST /api/wallets", () => {
     const response = await request(app)
       .post("/api/wallets")
       .send(invalidWallet);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe("Invalid wallet data");
+  });
+
+  it("should reject an empty initial balance", async () => {
+    const response = await request(app)
+      .post("/api/wallets")
+      .send({ ...providedWallet, initial_balance: "" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe("Invalid wallet data");
+  });
+
+  it("should reject a negative initial balance", async () => {
+    const response = await request(app)
+      .post("/api/wallets")
+      .send({ ...providedWallet, initial_balance: -1000 });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe("Invalid wallet data");
+  });
+
+  it("should reject an initial balance exceeding the maximum", async () => {
+    const response = await request(app)
+      .post("/api/wallets")
+      .send({
+        ...providedWallet,
+        initial_balance: 100_000_000_000_000,
+      });
 
     expect(response.status).toBe(400);
     expect(response.body.error).toBe("Invalid wallet data");

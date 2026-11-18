@@ -17,14 +17,11 @@ Bagian ini menampilkan tampilan PennyKu untuk memberikan gambaran mengenai fitur
 ### Wallet Management
 
 ![PennyKu Wallet Management](docs/screenshots/wallet-management.png)
+![PennyKu Wallet Input](docs/screenshots/wallet-input.png)
 
 ### Transaction Management
 
 ![PennyKu Transaction Management](docs/screenshots/transaction-management.png)
-
-### Transaction History
-
-![PennyKu Transaction History](docs/screenshots/transaction-history.png)
 
 ## Fitur Utama
 

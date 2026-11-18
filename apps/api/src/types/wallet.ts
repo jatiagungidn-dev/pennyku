@@ -1,12 +1,13 @@
 export type WalletType = "cash" | "bank" | "e-wallet" | "other";
 export type UpdateWalletData = Required<UpdateWalletPayload>;
+export type DatabaseNumeric = string;
 
 export interface Wallet {
   id: string;
   name: string;
   type: WalletType;
-  initial_balance: number;
-  current_balance: number;
+  initial_balance: DatabaseNumeric;
+  current_balance: DatabaseNumeric;
   created_at: string;
   updated_at: string;
 }
