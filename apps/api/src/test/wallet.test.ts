@@ -2,10 +2,16 @@ import { describe, it, expect, afterAll, beforeAll, beforeEach } from "vitest";
 import request from "supertest";
 
 import { createApp } from "../app.js";
-import { TEST_USER_ID, testAuth } from "./test-auth.js";
+import {
+  OTHER_USER_ID,
+  TEST_USER_ID,
+  testAuth,
+  createTestAuth,
+} from "./test-auth.js";
 import { pool } from "../config/db.js";
 
 const app = createApp(testAuth);
+const otherUserApp = createApp(createTestAuth(OTHER_USER_ID));
 
 async function cleanUpTestData() {
   await pool.query(
@@ -290,5 +296,51 @@ describe("DELETE /api/wallets/:id", () => {
 
     expect(response.status).toBe(404);
     expect(response.body.error).toBe("Wallet not found");
+  });
+});
+
+describe("Wallet authorization", () => {
+  it("should not expose another user's wallets", async () => {
+    await createWallet();
+
+    const respose = await request(otherUserApp).get("/api/wallets");
+
+    expect(respose.status).toBe(200);
+    expect(respose.body).toEqual({
+      data: [],
+      count: 0,
+    });
+  });
+
+  it("should reject updating another user's wallets", async () => {
+    const walletId = await createWallet();
+
+    const response = await request(otherUserApp)
+      .patch(`/api/wallets/${walletId}`)
+      .send(updatedWallet);
+
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBe("Wallet not found");
+
+    const ownerResponse = await request(app).get("/api/wallets");
+
+    expect(ownerResponse.body.data).toHaveLength(1);
+    expect(ownerResponse.body.data[0].name).toBe("Test Wallet");
+  });
+
+  it("should reject deleting another user's wallets", async () => {
+    const walletId = await createWallet();
+
+    const response = await request(otherUserApp).delete(
+      `/api/wallets/${walletId}`,
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBe("Wallet not found");
+
+    const ownerResponse = await request(app).get("/api/wallets");
+
+    expect(ownerResponse.body.data).toHaveLength(1);
+    expect(ownerResponse.body.data[0].id).toBe(walletId);
   });
 });

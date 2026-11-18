@@ -7,7 +7,6 @@ import {
   createTransactionSchema,
   updateTransactionSchema,
   type CreateTransactionInput,
-  type UpdateTransactionInput,
 } from "./transaction.schema.js";
 
 export const transactionService = {
@@ -144,7 +143,7 @@ export const transactionService = {
         if (!category) {
           throw new AppError(
             "Category not found or incompatible with transaction type",
-            400,
+            404,
           );
         }
       }
@@ -208,9 +207,6 @@ export const transactionService = {
     try {
       await client.query("BEGIN");
 
-      // Read the current wallet without locking the transaction first. Wallet
-      // rows must be locked before transaction rows so edits serialize with
-      // transaction creation's wallet-first balance check.
       const walletSnapshot =
         await transactionRepository.findOwnedTransactionWallet(
           client,
@@ -223,8 +219,9 @@ export const transactionService = {
       }
 
       const targetWalletId = updates.wallet_id ?? walletSnapshot.wallet_id;
-      const walletIds =
-        [...new Set([walletSnapshot.wallet_id, targetWalletId])].sort();
+      const walletIds = [
+        ...new Set([walletSnapshot.wallet_id, targetWalletId]),
+      ].sort();
 
       for (const id of walletIds) {
         const wallet = await transactionRepository.findOwnedWallet(
@@ -248,8 +245,6 @@ export const transactionService = {
         throw new AppError("Transaction not found", 404);
       }
 
-      // Another edit may have moved this transaction while we waited for the
-      // wallet lock. Retry from a fresh read to acquire the correct lock set.
       if (existing.wallet_id !== walletSnapshot.wallet_id) {
         throw new AppError(
           "Transaction changed while being updated; please retry",
