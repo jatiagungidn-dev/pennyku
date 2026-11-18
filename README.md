@@ -4,28 +4,6 @@
 
 Project ini dibangun menggunakan **Node.js, Express, TypeScript, dan PostgreSQL** pada sisi backend, serta **React dan TypeScript** pada sisi frontend. Authentication ditangani menggunakan **Neon Auth**.
 
-## Preview Aplikasi
-
-Bagian ini menampilkan tampilan PennyKu untuk memberikan gambaran mengenai fitur dan pengalaman penggunaan aplikasi.
-
-<!-- Tambahkan screenshot aplikasi ke folder docs/screenshots/ -->
-
-### Dashboard
-
-![PennyKu Dashboard](docs/screenshots/dashboard.png)
-
-### Wallet Management
-
-![PennyKu Wallet Management](docs/screenshots/wallet-management.png)
-
-### Transaction Management
-
-![PennyKu Transaction Management](docs/screenshots/transaction-management.png)
-
-### Transaction History
-
-![PennyKu Transaction History](docs/screenshots/transaction-history.png)
-
 ## Fitur Utama
 
 - **Authentication** - Autentikasi pengguna menggunakan Neon Auth dan token verification pada backend.
