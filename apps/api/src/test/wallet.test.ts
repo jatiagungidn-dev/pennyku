@@ -14,12 +14,14 @@ const app = createApp(testAuth);
 const otherUserApp = createApp(createTestAuth(OTHER_USER_ID));
 
 async function cleanUpTestData() {
+  const userIds = [TEST_USER_ID, OTHER_USER_ID];
+
   await pool.query(
     `
     DELETE FROM idempotency_keys
-    WHERE user_id = $1
+    WHERE user_id = ANY($1::uuid[])
   `,
-    [TEST_USER_ID],
+    [userIds],
   );
 
   await pool.query(
@@ -28,18 +30,18 @@ async function cleanUpTestData() {
     WHERE wallet_id IN (
       SELECT id
       FROM wallets
-      WHERE user_id = $1
+      WHERE user_id = ANY($1::uuid[])
     )
   `,
-    [TEST_USER_ID],
+    [userIds],
   );
 
   await pool.query(
     `
     DELETE FROM wallets
-    WHERE user_id = $1
+    WHERE user_id = ANY($1::uuid[])
   `,
-    [TEST_USER_ID],
+    [userIds],
   );
 }
 
@@ -225,7 +227,7 @@ describe("POST /api/wallets", () => {
 describe("PATCH /api/wallets/:id", () => {
   it("should update a wallet successfully", async () => {
     const created = await request(app)
-      .post("/api/wallets/")
+      .post("/api/wallets")
       .send(providedWallet);
 
     const walletId = created.body.data.id;
@@ -237,6 +239,21 @@ describe("PATCH /api/wallets/:id", () => {
     expect(response.status).toBe(200);
     expect(response.body.data).toMatchObject({
       id: walletId,
+      name: "Updated Wallet",
+      type: "bank",
+      initial_balance: "10000.00",
+    });
+
+    const result = await pool.query(
+      `
+      SELECT name, type, initial_balance
+      FROM wallets
+      WHERE id = $1 AND user_id = $2
+    `,
+      [walletId, TEST_USER_ID],
+    );
+
+    expect(result.rows[0]).toMatchObject({
       name: "Updated Wallet",
       type: "bank",
       initial_balance: "10000.00",
@@ -303,10 +320,10 @@ describe("Wallet authorization", () => {
   it("should not expose another user's wallets", async () => {
     await createWallet();
 
-    const respose = await request(otherUserApp).get("/api/wallets");
+    const response = await request(otherUserApp).get("/api/wallets");
 
-    expect(respose.status).toBe(200);
-    expect(respose.body).toEqual({
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
       data: [],
       count: 0,
     });

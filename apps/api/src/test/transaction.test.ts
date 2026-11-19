@@ -22,28 +22,30 @@ const transactionPayload = {
 let walletId: string;
 
 async function cleanUpTestData() {
+  const userIds = [TEST_USER_ID, OTHER_USER_ID];
+
   await pool.query(
     `
-            DELETE FROM idempotency_keys WHERE user_id = $1
+            DELETE FROM idempotency_keys WHERE user_id = ANY($1::uuid[])
         `,
-    [TEST_USER_ID],
+    [userIds],
   );
 
   await pool.query(
     `
             DELETE FROM transactions
             WHERE wallet_id IN (
-                SELECT id FROM wallets WHERE user_id = $1
+                SELECT id FROM wallets WHERE user_id = ANY($1::uuid[])
             )
         `,
-    [TEST_USER_ID],
+    [userIds],
   );
 
   await pool.query(
     `
-        DELETE FROM wallets WHERE user_id = $1
+        DELETE FROM wallets WHERE user_id = ANY($1::uuid[])
     `,
-    [TEST_USER_ID],
+    [userIds],
   );
 }
 
@@ -209,6 +211,49 @@ describe("POST /api/transactions idempotency", () => {
     expect(response.status).toBe(201);
     expect(await countTransaction()).toBe(1);
   });
+
+  it("should prevent conccurent expenses from overspending the same wallet", async () => {
+    const [firstResponse, secondResponse] = await Promise.all([
+      createTransactionRequest("conccurent-expense-001", {
+        ...transactionPayload,
+        amount: 70000,
+      }),
+      createTransactionRequest("conccurent-expense-002", {
+        ...transactionPayload,
+        amount: 70000,
+      }),
+    ]);
+
+    const statuses = [firstResponse.status, secondResponse.status].sort(
+      (a, b) => a - b,
+    );
+
+    expect(statuses).toEqual([201, 409]);
+    expect(await countTransaction()).toBe(1);
+
+    const countBalance = await pool.query(
+      `
+      SELECT 
+        w.initial_balance + COALESCE(
+          SUM(
+            CASE
+              WHEN t.type = 'income' THEN t.amount
+              WHEN t.type = 'expense' THEN -t.amount
+              ELSE 0
+            END
+          ),
+          0
+        ) AS balance
+      FROM wallets w
+      LEFT JOIN transactions t ON t.wallet_id = w.id
+      WHERE w.id = $1
+      GROUP BY w.id, w.initial_balance
+    `,
+      [walletId],
+    );
+
+    expect(Number(countBalance.rows[0].balance)).toBe(30000);
+  });
 });
 
 describe("Transaction authorization", () => {
@@ -301,8 +346,8 @@ describe("Transaction business rules", () => {
         amount: 100000,
       });
 
-    expect(response.status).toBe(400);
-    expect(Number(response.body.amount)).toBe(100000);
+    expect(response.status).toBe(200);
+    expect(Number(response.body.data.amount)).toBe(100000);
   });
 
   it("should reject a category incompatible with transaction type", async () => {

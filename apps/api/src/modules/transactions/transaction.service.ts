@@ -269,7 +269,11 @@ export const transactionService = {
             ? updates.description
             : (existing.description ?? ""),
 
-        transaction_date: updates.transaction_date ?? existing.transaction_date,
+        transaction_date:
+          updates.transaction_date ??
+          (existing.transaction_date instanceof Date
+            ? existing.transaction_date.toISOString().slice(0, 10)
+            : existing.transaction_date),
       };
 
       const validated = createTransactionSchema.safeParse(mergedData);
