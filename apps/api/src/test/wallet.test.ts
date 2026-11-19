@@ -314,6 +314,47 @@ describe("DELETE /api/wallets/:id", () => {
     expect(response.status).toBe(404);
     expect(response.body.error).toBe("Wallet not found");
   });
+
+  it("should reject deleting wallet that has transactions", async () => {
+    const created = await request(app)
+      .post("/api/wallets")
+      .send(providedWallet);
+
+    expect(created.status).toBe(201);
+
+    const walletId = created.body.data.id;
+
+    const transactionResult = await pool.query(
+      `
+      INSERT INTO transactions
+        (wallet_id, type, amount, description)
+      VALUES ($1, 'expense', 100, 'Deletion guard test')
+      RETURNING id
+    `,
+      [walletId],
+    );
+
+    const transactionId = transactionResult.rows[0].id;
+
+    const response = await request(app).delete(`/api/wallets/${walletId}`);
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toBe(
+      "Wallet has transactions and cannot be deleted",
+    );
+
+    const walletResult = await pool.query(
+      "SELECT id FROM wallets WHERE id = $1",
+      [walletId],
+    );
+    const remainingTransaction = await pool.query(
+      "SELECT id FROM transactions WHERE id = $1",
+      [transactionId],
+    );
+
+    expect(walletResult.rowCount).toBe(1);
+    expect(remainingTransaction.rowCount).toBe(1);
+  });
 });
 
 describe("Wallet authorization", () => {

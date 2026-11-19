@@ -6,9 +6,16 @@ import type {
   CreateWalletPayload,
   UpdateWalletData,
   Wallet,
+  WalletRepositoryResult,
 } from "../../types/wallet.js";
 
 export const walletService = {
+  async get(userId: string): Promise<WalletRepositoryResult<Wallet>> {
+    const wallets = await walletRepository.getWallets(userId);
+
+    return wallets;
+  },
+
   async create(
     userId: string,
     input: unknown,
@@ -93,6 +100,58 @@ export const walletService = {
       } catch (rollbackError) {
         console.error("Failed to rollback wallet update", rollbackError);
       }
+
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  async delete(walletId: string, userId: string): Promise<Pick<Wallet, "id">> {
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const existing = await walletRepository.findOwnedWallet(
+        client,
+        walletId,
+        userId,
+      );
+
+      if (!existing) {
+        throw new AppError("Wallet not found", 404);
+      }
+
+      const hasTransactions = await walletRepository.hasTransactions(
+        client,
+        walletId,
+      );
+
+      if (hasTransactions) {
+        throw new AppError(
+          "Wallet has transactions and cannot be deleted",
+          409,
+        );
+      }
+
+      const wallet = await walletRepository.deleteWallet(
+        client,
+        walletId,
+        userId,
+      );
+
+      if (!wallet) {
+        throw new AppError("Wallet not found", 404);
+      }
+
+      await client.query("COMMIT");
+
+      return wallet;
+    } catch (err) {
+      client.query("ROLLBACK").catch((rollbackError: unknown) => {
+        console.error("Rollback failed:", rollbackError);
+      });
 
       throw err;
     } finally {

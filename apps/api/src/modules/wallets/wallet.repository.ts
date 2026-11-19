@@ -8,6 +8,23 @@ import type {
 } from "../../types/wallet.js";
 
 export const walletRepository = {
+  async hasTransactions(
+    client: PoolClient,
+    walletId: string,
+  ): Promise<boolean> {
+    const result = await pool.query(
+      `
+      SELECT 1
+      FROM transactions
+      WHERE wallet_id = $1
+      LIMIT 1
+    `,
+      [walletId],
+    );
+
+    return (result.rowCount ?? 0) > 0;
+  },
+
   async getWallets(userId: string): Promise<WalletRepositoryResult<Wallet>> {
     const result = await pool.query<Wallet>(
       `
@@ -126,10 +143,11 @@ export const walletRepository = {
   },
 
   async deleteWallet(
+    client: PoolClient,
     walletId: string,
     userId: string,
   ): Promise<Pick<Wallet, "id"> | null> {
-    const result = await pool.query<Pick<Wallet, "id">>(
+    const result = await client.query<Pick<Wallet, "id">>(
       `
         DELETE FROM wallets
         WHERE id = $1 AND user_id = $2

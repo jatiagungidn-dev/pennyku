@@ -8,7 +8,7 @@ export const getWallets: RequestHandler = async (req, res) => {
 
   req.log.debug({ userId }, "Fetching wallets...");
 
-  const wallets = await walletRepository.getWallets(userId);
+  const wallets = await walletService.get(userId);
 
   req.log.info({ userId }, "Wallets fetched successfully");
 
@@ -63,7 +63,7 @@ export const walletDelete: RequestHandler = async (req, res) => {
     throw new AppError("Invalid wallet ID", 400);
   }
 
-  const wallet = await walletRepository.deleteWallet(id, userId);
+  const wallet = await walletService.delete(id, userId);
 
   if (!wallet) {
     req.log.warn(
