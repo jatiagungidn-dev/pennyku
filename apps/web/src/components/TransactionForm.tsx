@@ -8,6 +8,7 @@ import {
 } from "../services/transaction.service";
 
 import { getCategories, type Category } from "../services/category.service";
+import CategoryForm from "./CategoryForm";
 import type { Wallet } from "../services/wallet.service";
 import { formatNumberInput, parseNumberInput, today } from "../lib/format";
 import { getApiErrorMessage } from "../lib/api";
@@ -33,6 +34,7 @@ export default function TransactionForm({
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
 
   const [type, setType] = useState<TransactionType>(
     initialTransaction?.type ?? "expense",
@@ -202,7 +204,10 @@ export default function TransactionForm({
               className={
                 type === "expense" ? "type-option selected" : "type-option"
               }
-              onClick={() => setType("expense")}
+              onClick={() => {
+                setType("expense");
+                setShowCategoryForm(false);
+              }}
               aria-pressed={type === "expense"}
             >
               Expense
@@ -213,7 +218,10 @@ export default function TransactionForm({
               className={
                 type === "income" ? "type-option selected" : "type-option"
               }
-              onClick={() => setType("income")}
+              onClick={() => {
+                setType("income");
+                setShowCategoryForm(false);
+              }}
               aria-pressed={type === "income"}
             >
               Income
@@ -239,7 +247,21 @@ export default function TransactionForm({
         </div>
 
         <div className="form-field">
-          <label htmlFor="transaction-category">Category</label>
+          <div className="field-label-row">
+            <label htmlFor="transaction-category">Category</label>
+
+            <button
+              type="button"
+              className="inline-action-button"
+              onClick={() => {
+                setShowCategoryForm((current) => !current);
+                onError("");
+                onSuccess("");
+              }}
+            >
+              {showCategoryForm ? "Cancel" : "+ New category"}
+            </button>
+          </div>
 
           <select
             id="transaction-category"
@@ -298,6 +320,21 @@ export default function TransactionForm({
           />
         </div>
       </div>
+
+      {showCategoryForm && (
+        <CategoryForm
+          type={type}
+          onError={onError}
+          onCancel={() => setShowCategoryForm(false)}
+          onCreated={(category) => {
+            setCategories((current) => [...current, category]);
+            setCategoryId(category.id);
+            setShowCategoryForm(false);
+            onError("");
+            onSuccess(`Kategori "${category.name}" berhasil dibuat!`);
+          }}
+        />
+      )}
 
       <div className="transaction-form-actions">
         {isEditing && onCancel && (
