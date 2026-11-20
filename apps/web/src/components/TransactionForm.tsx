@@ -9,7 +9,7 @@ import {
 
 import { getCategories, type Category } from "../services/category.service";
 import type { Wallet } from "../services/wallet.service";
-import { today } from "../lib/format";
+import { formatNumberInput, parseNumberInput, today } from "../lib/format";
 import { getApiErrorMessage } from "../lib/api";
 
 type TransactionFormProps = {
@@ -100,10 +100,14 @@ export default function TransactionForm({
     onError("");
     onSuccess("");
 
-    const numericAmount = Number(amount);
+    const numericAmount = parseNumberInput(amount);
 
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      onError("Nominal harus lebih besar dari nol.");
+    if (
+      !Number.isSafeInteger(numericAmount) ||
+      numericAmount <= 0 ||
+      numericAmount > 99_999_999_999_999
+    ) {
+      onError("Nominal harus berupa Rupiah antara 1 dan 99.999.999.999.999.");
       return;
     }
 
@@ -258,12 +262,14 @@ export default function TransactionForm({
 
           <input
             id="transaction-amount"
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            placeholder="50000"
+            type="text"
+            inputMode="numeric"
+            value={formatNumberInput(amount)}
+            onChange={(event) => {
+              const digits = event.target.value.replace(/\D/g, "");
+              setAmount(digits);
+            }}
+            placeholder="50.000"
             required
           />
         </div>

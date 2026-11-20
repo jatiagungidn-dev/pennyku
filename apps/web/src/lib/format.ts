@@ -13,6 +13,22 @@ export const formatTransactionDate = (value: string) => {
   return `${day}/${month}/${year}`;
 };
 
+export const formatNumberInput = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+
+  if (!digits) return "";
+
+  return new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 0,
+  }).format(Number(digits));
+};
+
+export const parseNumberInput = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+
+  return digits ? Number(digits) : 0;
+};
+
 export const today = () => {
   const date = new Date();
   const year = date.getFullYear();

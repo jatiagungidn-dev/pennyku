@@ -6,7 +6,8 @@ import {
   type Wallet,
   type WalletType,
 } from "../services/wallet.service";
-import { formatIDR } from "../lib/format";
+import { formatIDR, formatNumberInput, parseNumberInput } from "../lib/format";
+import { getApiErrorMessage } from "../lib/api";
 
 type WalletSectionProps = {
   wallets: Wallet[];
@@ -58,10 +59,16 @@ export default function WalletSection({
     onError("");
     onSuccess("");
 
-    const initialBalance = Number(balance);
+    const initialBalance = parseNumberInput(balance);
 
-    if (!Number.isFinite(initialBalance) || initialBalance < 0) {
-      onError("Saldo awal harus berupa angka nol atau lebih.");
+    if (
+      !Number.isSafeInteger(initialBalance) ||
+      initialBalance < 0 ||
+      initialBalance > 99_999_999_999_999
+    ) {
+      onError(
+        "Saldo awal harus berupa Rupiah antara 0 dan 99.999.999.999.999.",
+      );
       setSaving(false);
       return;
     }
@@ -138,7 +145,7 @@ export default function WalletSection({
       onSuccess(`Wallet "${walletToDelete.name}" berhasil dihapus.`);
       setWalletToDelete(null);
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Gagal menghapus wallet.");
+      onError(getApiErrorMessage(err));
     } finally {
       setDeletingWalletId(null);
     }
@@ -196,12 +203,14 @@ export default function WalletSection({
             <label htmlFor="wallet-balance">Initial balance (IDR)</label>
             <input
               id="wallet-balance"
-              type="number"
-              min="0"
-              max="99999999999999.99"
-              step="0.01"
-              value={balance}
-              onChange={(event) => setBalance(event.target.value)}
+              type="text"
+              inputMode="numeric"
+              value={formatNumberInput(balance)}
+              onChange={(event) => {
+                const digits = event.target.value.replace(/\D/g, "");
+                setBalance(digits);
+              }}
+              placeholder="1.000.000"
               required
             />
           </div>
@@ -351,12 +360,8 @@ export default function WalletSection({
             </h3>
 
             <p>
-              Wallet ini dan semua transaksi yang terhubung dengannya akan
-              dihapus permanen. Saldo{" "}
-              <strong>
-                {formatIDR(Number(walletToDelete.current_balance))}
-              </strong>{" "}
-              juga tidak akan lagi masuk ke total balance.
+              Wallet hanya dapat dihapus jika belum memiliki transaksi. Setelah
+              dihapus, saldo wallet tidak akan lagi masuk ke total balance.
             </p>
 
             <div className="modal-actions">
