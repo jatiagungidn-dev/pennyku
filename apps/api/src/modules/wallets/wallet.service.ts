@@ -149,10 +149,11 @@ export const walletService = {
 
       return wallet;
     } catch (err) {
-      client.query("ROLLBACK").catch((rollbackError: unknown) => {
-        console.error("Rollback failed:", rollbackError);
-      });
-
+      try {
+        client.query("ROLLBACK");
+      } catch (rollbackError: unknown) {
+        console.error("Failed to rollback deletion:", rollbackError);
+      }
       throw err;
     } finally {
       client.release();

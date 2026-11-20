@@ -222,6 +222,17 @@ describe("POST /api/wallets", () => {
     expect(response.status).toBe(400);
     expect(response.body.error).toBe("Invalid wallet data");
   });
+
+  it("should reject a fractional initial balance", async () => {
+    const response = await request(app)
+      .post("/api/wallets")
+      .send({
+        ...providedWallet,
+        initial_balance: 10000.5,
+      });
+
+    expect(response.status).toBe(400);
+  });
 });
 
 describe("PATCH /api/wallets/:id", () => {

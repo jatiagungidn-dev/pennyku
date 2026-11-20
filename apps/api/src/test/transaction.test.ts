@@ -411,4 +411,14 @@ describe("Transaction business rules", () => {
 
     expect(result.rowCount).toBe(1);
   });
+
+  it("should reject a fractional transaction amount", async () => {
+    const response = await createTransactionRequest("fractional-001", {
+      ...transactionPayload,
+      amount: 50000.5,
+    });
+
+    expect(response.status).toBe(400);
+    expect(await countTransaction()).toBe(0);
+  });
 });

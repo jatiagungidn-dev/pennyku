@@ -12,7 +12,7 @@ export const walletRepository = {
     client: PoolClient,
     walletId: string,
   ): Promise<boolean> {
-    const result = await pool.query(
+    const result = await client.query(
       `
       SELECT 1
       FROM transactions

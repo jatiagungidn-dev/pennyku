@@ -4,7 +4,11 @@ export const createTransactionSchema = z.object({
   wallet_id: z.uuid(),
   category_id: z.uuid().optional().nullable(),
   type: z.enum(["income", "expense"]),
-  amount: z.coerce.number().finite().positive().max(99_999_999_999_999.99),
+  amount: z.coerce
+    .number()
+    .int("Amount must be a whole number")
+    .positive()
+    .max(99_999_999_999_999),
   description: z.string().trim().max(255).optional(),
   transaction_date: z.iso.date().optional(),
 });

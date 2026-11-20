@@ -33,4 +33,12 @@ if (!parsed.success) {
   process.exit(1);
 }
 
+if (
+  parsed.data.NODE_ENV === "production" &&
+  parsed.data.CORS_ORIGIN === "http://localhost:5173"
+) {
+  console.error("CORS_ORIGIN must be configured in production");
+  process.exit(1);
+}
+
 export const env = parsed.data;

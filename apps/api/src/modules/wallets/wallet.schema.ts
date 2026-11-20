@@ -9,7 +9,11 @@ export const createWalletSchema = z.object({
   type: z.enum(["cash", "bank", "e-wallet", "other"]),
   initial_balance: z.preprocess(
     (value) => (typeof value === "string" && value === "" ? Number.NaN : value),
-    z.coerce.number().finite().nonnegative().max(99_999_999_999_999.99),
+    z.coerce
+      .number()
+      .int("Initial balance must be a whole number")
+      .nonnegative()
+      .max(99_999_999_999_999),
   ),
 });
 
