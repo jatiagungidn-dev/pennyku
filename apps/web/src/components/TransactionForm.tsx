@@ -47,7 +47,7 @@ export default function TransactionForm({
   );
 
   const [amount, setAmount] = useState(
-    initialTransaction ? String(initialTransaction.amount) : "",
+    initialTransaction ? String(Number(initialTransaction.amount)) : "",
   );
 
   const [description, setDescription] = useState(
