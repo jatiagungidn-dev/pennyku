@@ -59,6 +59,7 @@ export default function TransactionForm({
   );
 
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const idempotencyKeyRef = useRef<string | null>(null);
 
@@ -99,6 +100,7 @@ export default function TransactionForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    setFormError("");
     onError("");
     onSuccess("");
 
@@ -109,12 +111,14 @@ export default function TransactionForm({
       numericAmount <= 0 ||
       numericAmount > 99_999_999_999_999
     ) {
-      onError("Nominal harus berupa Rupiah antara 1 dan 99.999.999.999.999.");
+      setFormError(
+        "Nominal harus berupa Rupiah antara 1 dan 99.999.999.999.999.",
+      );
       return;
     }
 
     if (!selectedWalletId) {
-      onError("Buat wallet terlebih dahulu sebelum mencatat transaksi.");
+      setFormError("Buat wallet terlebih dahulu sebelum mencatat transaksi.");
       return;
     }
 
@@ -166,7 +170,7 @@ export default function TransactionForm({
         setTransactionDate(today());
       }
     } catch (err) {
-      onError(getApiErrorMessage(err));
+      setFormError(getApiErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -334,6 +338,12 @@ export default function TransactionForm({
             onSuccess(`Kategori "${category.name}" berhasil dibuat!`);
           }}
         />
+      )}
+
+      {formError && (
+        <div className="form-message-error" role="alert">
+          {formError}
+        </div>
       )}
 
       <div className="transaction-form-actions">
