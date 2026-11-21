@@ -1297,6 +1297,37 @@ textarea:focus-visible {
   gap: 10px;
 }
 
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 72px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.password-toggle:hover {
+  background: var(--primary-soft);
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 @media (max-width: 640px) {
   .field-label-row {
     align-items: flex-start;

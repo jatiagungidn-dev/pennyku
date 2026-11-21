@@ -12,6 +12,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -168,18 +169,30 @@ export default function AuthPage() {
 
             <div className="form-field">
               <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Minimal 8 karakter"
-                autoComplete={
-                  mode === "signup" ? "new-password" : "current-password"
-                }
-                minLength={8}
-                required
-              />
+
+              <div className="password-field">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Minimal 8 karakter"
+                  autoComplete={
+                    mode === "signup" ? "new-password" : "current-password"
+                  }
+                  minLength={8}
+                  required
+                />
+
+                <button
+                  className="password-toggle"
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-controls="password"
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
 
             {message && (
