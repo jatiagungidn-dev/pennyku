@@ -9,6 +9,7 @@ type TransactionListProps = {
   pagination: TransactionPagination;
   onPageChange: (page: number) => void;
   onEdit: (transaction: Transaction) => void;
+  onDelete: (transaction: Transaction) => void;
 };
 
 export default function TransactionList({
@@ -16,6 +17,7 @@ export default function TransactionList({
   pagination,
   onPageChange,
   onEdit,
+  onDelete,
 }: TransactionListProps) {
   return (
     <div className="transaction-history">
@@ -57,6 +59,14 @@ export default function TransactionList({
                   onClick={() => onEdit(transaction)}
                 >
                   Edit
+                </button>
+
+                <button
+                  className="danger-button"
+                  type="button"
+                  onClick={() => onDelete(transaction)}
+                >
+                  Delete
                 </button>
               </div>
             </article>

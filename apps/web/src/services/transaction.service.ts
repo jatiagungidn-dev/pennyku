@@ -92,3 +92,7 @@ export async function updateTransaction(
 
   return response.data.data;
 }
+
+export async function deleteTransaction(id: string): Promise<void> {
+  await api.delete(`/api/transactions/${id}`);
+}
